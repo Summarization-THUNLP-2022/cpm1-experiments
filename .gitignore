@@ -1,0 +1,4 @@
+data
+experiments/*/results
+experiments/*/*.log
+*__pycache__*
