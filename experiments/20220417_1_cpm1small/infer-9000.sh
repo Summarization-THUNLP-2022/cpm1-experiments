@@ -21,7 +21,7 @@ OPTS+=" --model-config ${MODEL_CONFIG_DIR}/config.json"
 OPTS+=" --vocab-file ${MODEL_CONFIG_DIR}/vocab.txt"
 OPTS+=" --load ${BASE_PATH}/results/finetune-cpm1-ckpt-${CKPT_STEPS}.pt"
 OPTS+=" --input-file /data2/private/zhaoxinhao/cpm1/data/LCSTS/test.jsonl"
-OPTS+=" --output-file ${BASE_PATH}/infer_results/infer-${CKPT_STEPS}.txt"
+OPTS+=" --output-file ${BASE_PATH}/infer_results/infer-${CKPT_STEPS}.jsonl"
 OPTS+=" --span-length 40"
 OPTS+=" --temperature 1"
 OPTS+=" --top-k 0"
@@ -31,7 +31,9 @@ OPTS+=" --repetition-penalty 1"
 OPTS+=" --beam-size 5"
 # OPTS+=" --random-sample"
 
-CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${BASE_PATH}/code/infer_file.py ${OPTS}"
+CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${BASE_PATH}/code/infer_lcsts.py ${OPTS}"
 echo ${CMD}
 
 ${CMD} 2>&1 | tee ${BASE_PATH}/infer_results/infer-${CKPT_STEPS}.log
+
+cat ${BASE_PATH}/infer_results/infer-${CKPT_STEPS}.jsonl.* > ${BASE_PATH}/infer_results/infer-${CKPT_STEPS}.jsonl

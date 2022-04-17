@@ -67,7 +67,7 @@ def main():
             source = "空"
         else:
             source = json.loads(lines[data_idx])['text']
-            source = f'"{source}"的摘要是:'
+            source = f'“{source}”的摘要是:'
         
         target_span_len = args.span_length
         # 每个instance指定不同的target span长度
