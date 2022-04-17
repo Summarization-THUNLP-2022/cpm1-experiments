@@ -4,3 +4,4 @@ experiments/*/*.log
 *__pycache__*
 reference
 pretrain_models
+*infer_results*

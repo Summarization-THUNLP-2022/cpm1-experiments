@@ -15,6 +15,7 @@
 
 import argparse
 
+
 def add_model_config_args(parser: argparse.ArgumentParser):
     """Model arguments"""
 
@@ -23,6 +24,37 @@ def add_model_config_args(parser: argparse.ArgumentParser):
                        help='model configuration file')
     group.add_argument('--cache-path', type=str, default="~/.cache/model-center")
     return parser
+
+
+def add_inference_args(parser: argparse.ArgumentParser):
+    """inference arguments"""
+
+    group = parser.add_argument_group('infer', 'inference configuration')
+    group.add_argument('--vocab-file', type=str, default=None)
+    group.add_argument('--output-file', type=str, default=None,
+                       help='output file')
+    group.add_argument('--input-file', type=str, default=None,
+                       help='input file')
+    group.add_argument('--span-length', type=int, default=None,
+                       help='span length')
+    group.add_argument('--beam-size', type=int, default=1,
+                       help='beam size')
+    group.add_argument('--top-k', type=int, default=0,
+                       help='top k')
+    group.add_argument('--top-p', type=float, default=0.0,
+                       help='top p')
+    group.add_argument('--temperature', type=float, default=0.9,
+                       help='temperature')
+    group.add_argument('--no-repeat-ngram-size', type=int, default=0,
+                       help='no repeat ngram size')
+    group.add_argument('--repetition-penalty', type=float, default=1.0,
+                       help='repetition penalty')
+    group.add_argument('--random-sample', default=False, action='store_true',
+                       help='use random sample strategy')
+    group.add_argument('--prompt-infer', default=False, action='store_true',
+                       help='whether use prompt-tuning model for inference')
+    return parser
+
 
 def add_training_args(parser: argparse.ArgumentParser):
     """Training arguments."""
@@ -91,6 +123,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser = add_model_config_args(parser)
     parser = add_training_args(parser)
+    parser = add_inference_args(parser)
     
     args = parser.parse_args()
     return args
