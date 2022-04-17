@@ -2,4 +2,5 @@ data
 experiments/*/results
 experiments/*/*.log
 *__pycache__*
-reference/ModelCenter
+reference
+pretrain_models
