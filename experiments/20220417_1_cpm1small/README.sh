@@ -8,5 +8,6 @@
 ## 对代码的修改
 
 - 修改BaseModel中load的strict为True
+- 添加infer code，修改arguments.py
 
 ## 结果
