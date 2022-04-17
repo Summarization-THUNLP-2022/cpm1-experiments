@@ -14,7 +14,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 BASE_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
 MODEL_CONFIG_DIR=/data2/private/zhaoxinhao/ModelCenter/cpm1-small
-CKPT_STEPS=1000
+CKPT_STEPS=4000
 
 OPTS=""
 OPTS+=" --model-config ${MODEL_CONFIG_DIR}/config.json"
