@@ -1,7 +1,7 @@
 #! /bin/bash
 
 MASTER_ADDR=localhost
-MASTER_PORT=13579
+MASTER_PORT=13578
 NNODES=1
 NODE_RANK=0
 GPUS_PER_NODE=2
@@ -16,18 +16,18 @@ BASE_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
 DATASET="LCSTS"
 
 OPTS=""
-OPTS+=" --cache-path ~/.cache/ModelCenter"
-OPTS+=" --data-path /data1/private/zhaoxinhao/cpm1-experiments/data"
+OPTS+=" --cache-path /data2/private/zhaoxinhao/ModelCenter"
+OPTS+=" --data-path /data2/private/zhaoxinhao/cpm1/data"
 OPTS+=" --dataset ${DATASET}"
 OPTS+=" --base-path ${BASE_PATH}"
-OPTS+=" --model-config /data1/private/zhaoxinhao/cpm1-experiments/pretrain_models/cpm1-small"
+OPTS+=" --model-config /data2/private/zhaoxinhao/ModelCenter/cpm1-small"
 OPTS+=" --batch-size 128"
 OPTS+=" --train-iters 60000"
 OPTS+=" --save-iters 1000"
 OPTS+=" --max-length 256"
 OPTS+=" --save ${BASE_PATH}/results"
 OPTS+=" --save-name finetune-cpm1-ckpt"
-OPTS+=" --lr 1e-3"
+OPTS+=" --lr 1e-2"
 OPTS+=" --inspect-iters 100"
 OPTS+=" --warmup-iters 200"
 OPTS+=" --lr-decay-style noam"

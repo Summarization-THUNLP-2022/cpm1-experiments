@@ -34,7 +34,7 @@ class LCSTS_Dataset(torch.utils.data.Dataset):
 
 	def make_input(self, summary, text, max_length, tokenizer):
 		lef_tokens = [1] + tokenizer.encode(f'{text}的摘要是:')
-		rig_tokens = tokenizer.encode(summary) + tokenizer.eod_id()
+		rig_tokens = tokenizer.encode(summary) + [tokenizer.eod_id]
 
 		lef_length = len(lef_tokens)
 		rig_length = len(rig_tokens)
