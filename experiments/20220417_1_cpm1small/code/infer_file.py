@@ -66,7 +66,7 @@ def main():
         if data_idx >= total_lines:
             source = "空"
         else:
-            source = json.loads(lines[data_idx])['text']
+            source = json.loads(lines[data_idx])['text'] + '的摘要是:'
         
         target_span_len = args.span_length
         # 每个instance指定不同的target span长度
@@ -84,7 +84,7 @@ def main():
                             no_repeat_ngram_size = args.no_repeat_ngram_size, repetition_penalty = args.repetition_penalty, 
                             random_sample=args.random_sample, min_len=min_len):
             
-            if it == '</s>':
+            if it == '<eod>':
                 break
             
             fout.write(it)

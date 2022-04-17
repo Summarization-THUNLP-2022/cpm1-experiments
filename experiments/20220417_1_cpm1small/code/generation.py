@@ -443,15 +443,48 @@ def generate_beam(model, tokenizer, lef_sentence, spans, beam_size = 3,
             yield token
 
 
+def generate_no_beam(model, tokenizer, lef_sentence, spans, 
+                     temperature = .9, top_k = 0, top_p = 0.9,
+                     no_repeat_ngram_size = 3, repetition_penalty = 1):
+
+    lef_tokens = tokenizer.encode(lef_sentence)
+    lef_tokens = [1] + lef_tokens
+
+    input_tokens, input_length, input_span, context = make_input(lef_tokens, spans)
+
+    for i in range(len(lef_tokens) - 1, len(lef_tokens) + spans - 1):
+        logits = model(input_tokens, input_length, context, input_span)
+        logits = logits[:, i, :] / temperature
+        logits = postprocess_next_token_scores(
+            tokenizer=tokenizer,
+            scores=logits,
+            input_ids=input_tokens,
+            no_repeat_ngram_size=no_repeat_ngram_size,
+            bad_words_ids=[[0]],
+            repetition_penalty=repetition_penalty,
+            batch_size=1,
+            num_beams=1,
+        )
+        logits = top_k_logits(logits, top_k = top_k, top_p = top_p)
+        probs = F.softmax(logits, dim=-1)
+        next_token = torch.multinomial(probs, num_samples=1).squeeze(1)
+        input_tokens[0][i + 1] = next_token
+        # context[0][i+1] = True
+    for i in input_tokens[0][len(lef_tokens):].cpu().numpy():
+        if i == tokenizer.eod_id:
+            break
+        yield tokenizer.decode([i])
+
+
 def generate(model, tokenizer, instance, target_span_len, beam,
                      temperature = .9, top_k = 0, top_p = 0.9,
                      no_repeat_ngram_size = 0, repetition_penalty = 1,
                      random_sample=False, min_len=None):
     if beam == 1:
         pass
-        # generation_str = generate_no_beam_cpm3(model, tokenizer, instance, target_span_len,
+        # generation_str = generate_no_beam(model, tokenizer, instance, target_span_len,
         #                                 temperature, top_k, top_p,
-        #                                 no_repeat_ngram_size, repetition_penalty, random_sample, min_len)
+        #                                 no_repeat_ngram_size, repetition_penalty)
     else:
         generation_str = generate_beam(model, tokenizer, instance, target_span_len, beam,
                                     temperature, top_k, top_p,
