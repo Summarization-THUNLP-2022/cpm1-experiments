@@ -64,10 +64,9 @@ def main():
         data_idx = step * bmp.rank() + idx
 
         if data_idx >= total_lines:
-            source = "空"
+            source = '“' + json.loads(lines[0])['text'] + '”的摘要是:'
         else:
-            source = json.loads(lines[data_idx])['text']
-            source = f'“{source}”的摘要是:'
+            source = '“' + json.loads(lines[data_idx])['text'] + '”的摘要是:'
         
         target_span_len = args.span_length
         # 每个instance指定不同的target span长度
@@ -80,17 +79,31 @@ def main():
         # 指定最短生成长度
         # min_len = min(target_span_len-1, int(len(instance['source'][0])*0.4*0.7))
         min_len = 2 # 确保生成内容不为空
+
+        predict_sentence = ""
+
         for it in generate(model, tokenizer, source, target_span_len, beam=args.beam_size,
                             temperature = args.temperature, top_k = args.top_k, top_p = args.top_p,
                             no_repeat_ngram_size = args.no_repeat_ngram_size, repetition_penalty = args.repetition_penalty, 
                             random_sample=args.random_sample, min_len=min_len):
             
-            if it == '</s>':
+            if it == '<eod>':
                 break
-            
-            fout.write(it)
-            fout.flush()
-        fout.write('\n')
+
+            predict_sentence += it
+            # fout.write(it)
+            # fout.flush()
+
+        result_dict = {
+            "summary": predict_sentence,
+            "text": json.loads(lines[data_idx])['text']
+        }
+
+        if data_idx >= total_lines:
+            continue
+
+        fout.write(json.dumps(result_dict, ensure_ascii=False) + '\n')
+        fout.flush()
         
     fout.close()
 
