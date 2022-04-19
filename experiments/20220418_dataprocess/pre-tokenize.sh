@@ -1,4 +1,4 @@
-python experiments/20220418_dataprocess/code/make_input.py \
+python experiments/20220418_dataprocess/code/pre-tokenize.py \
 	--process-num 16 \
 	--data-dir /home/zhaoxinhao/data2/cpm1/data \
 	--dataset LCSTS \
@@ -7,7 +7,7 @@ python experiments/20220418_dataprocess/code/make_input.py \
 	--model-config cpm1-small \
 	--output-dir /home/zhaoxinhao/data2/cpm1/train_data
 
-python experiments/20220418_dataprocess/code/make_input.py \
+python experiments/20220418_dataprocess/code/pre-tokenize.py \
 	--process-num 32 \
 	--data-dir /home/zhaoxinhao/data2/cpm1/data \
 	--dataset LCSTS \
