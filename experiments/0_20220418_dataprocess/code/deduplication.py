@@ -33,6 +33,10 @@ def main():
 		for line in tqdm(fin):
 			train_data.add(tuple(json.loads(line)['summary']))
 
+	output_dir = os.path.join(args.output_dir, args.dataset)
+	if not os.path.exists(output_dir):
+		os.makedirs(output_dir)
+
 	with open(os.path.join(file_dir, args.dev_file_name), encoding='utf8') as fin, open(os.path.join(args.output_dir, args.dataset, args.dev_file_name + '.dedup'), 'w') as fout:
 		for i, line in tqdm(enumerate(fin)):
 			rig_tokens = tuple(json.loads(line)['summary'])

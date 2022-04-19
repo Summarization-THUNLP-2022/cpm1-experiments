@@ -1,27 +1,27 @@
-# python experiments/20220418_dataprocess/code/pre-tokenize.py \
-# 	--process-num 16 \
-# 	--data-dir /home/zhaoxinhao/data2/cpm1/data \
-# 	--dataset LCSTS \
-# 	--file-name dev.jsonl \
-# 	--cache-path /data2/private/zhaoxinhao/ModelCenter \
-# 	--model-config cpm1-small \
-# 	--output-dir /home/zhaoxinhao/data2/cpm1/train_data
-
-# python experiments/20220418_dataprocess/code/pre-tokenize.py \
-# 	--process-num 32 \
-# 	--data-dir /home/zhaoxinhao/data2/cpm1/data \
-# 	--dataset LCSTS \
-# 	--file-name train.jsonl \
-# 	--cache-path /data2/private/zhaoxinhao/ModelCenter \
-# 	--model-config cpm1-small \
-# 	--output-dir /home/zhaoxinhao/data2/cpm1/train_data
-
-python experiments/0_20220418_dataprocess/code/pre-tokenize.py \
+python $CPM_BASE_PATH/experiments/0_20220418_dataprocess/code/pre-tokenize.py \
 	--process-num 16 \
-	--data-dir /home/zhaoxinhao/data2/cpm1/data \
+	--data-dir $CPM_DATA_PATH \
+	--dataset LCSTS \
+	--file-name dev.jsonl \
+	--cache-path $CPM_CACHE_PATH \
+	--model-config cpm1-small \
+	--output-dir $CPM_TRAIN_DATA_PATH
+
+python $CPM_BASE_PATH/experiments/0_20220418_dataprocess/code/pre-tokenize.py \
+	--process-num 16 \
+	--data-dir $CPM_DATA_PATH \
+	--dataset LCSTS \
+	--file-name train.jsonl \
+	--cache-path $CPM_CACHE_PATH \
+	--model-config cpm1-small \
+	--output-dir $CPM_TRAIN_DATA_PATH
+
+python $CPM_BASE_PATH/experiments/0_20220418_dataprocess/code/pre-tokenize.py \
+	--process-num 16 \
+	--data-dir $CPM_DATA_PATH \
 	--dataset LCSTS \
 	--file-name dev.jsonl.dedup \
-	--cache-path /data2/private/zhaoxinhao/ModelCenter \
+	--cache-path $CPM_CACHE_PATH \
 	--model-config cpm1-small \
-	--output-dir /home/zhaoxinhao/data2/cpm1/train_data
+	--output-dir $CPM_TRAIN_DATA_PATH
 	
