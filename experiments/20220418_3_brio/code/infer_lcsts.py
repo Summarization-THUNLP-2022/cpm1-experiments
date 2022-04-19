@@ -59,9 +59,9 @@ def main():
     total_lines = len(lines)
     step = (total_lines + bmp.world_size() -1) // bmp.world_size()
     for idx in range(step):
-        # print(idx, bmp.rank())
         # print(bmp.world_size())
         data_idx = step * bmp.rank() + idx
+        print(idx, bmp.rank())
 
         if data_idx >= total_lines:
             source = '“' + json.loads(lines[0])['text'] + '”的摘要是:'
@@ -98,6 +98,8 @@ def main():
             "summary": predict_sentence,
             "text": json.loads(lines[data_idx])['text']
         }
+
+        bmp.synchronize()
 
         if data_idx >= total_lines:
             continue
