@@ -18,10 +18,10 @@ class LCSTS_Dataset(torch.utils.data.Dataset):
 					if i % 5000 == 0:
 						bmt.print_rank(i)
 					line_json = json.loads(line)
-					summary = line_json['summary']
-					text = line_json['text']
+					lef_tokens = line_json['lef_tokens']
+					rig_tokens = line_json['rig_tokens']
 
-					input_tokens, input_length, context, input_span, target, target_length = self.make_input(summary, text, max_length, tokenizer)
+					input_tokens, input_length, context, input_span, target, target_length = self.make_input(lef_tokens, rig_tokens, max_length, tokenizer)
 
 					self.data.append({
 						"input_tokens": input_tokens,
@@ -32,10 +32,7 @@ class LCSTS_Dataset(torch.utils.data.Dataset):
 						"target_length": target_length,
 					})
 
-	def make_input(self, summary, text, max_length, tokenizer):
-		lef_tokens = [1] + tokenizer.encode(f'“{text}”的摘要是:')
-		rig_tokens = tokenizer.encode(summary) + [tokenizer.eod_id]
-
+	def make_input(self, lef_tokens, rig_tokens, max_length, tokenizer):
 		lef_length = len(lef_tokens)
 		rig_length = len(rig_tokens)
 
