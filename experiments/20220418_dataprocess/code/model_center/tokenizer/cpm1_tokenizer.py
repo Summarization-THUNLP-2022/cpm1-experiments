@@ -133,6 +133,11 @@ class CPM1Tokenizer(object):
         path = check_web_and_convert_path(pretrained_model_name_or_path, 'tokenizer', cache_path=cache_path)
         return cls(os.path.join(path, 'vocab.txt'))
 
+    @classmethod
+    def from_pretrained_simple(cls, pretrained_model_name, cache_path):
+        path = os.path.join(cache_path, pretrained_model_name, 'vocab.txt')
+        return cls(path)
+
     def __init__(self, 
                  vocab_file, 
                  max_len = None, 

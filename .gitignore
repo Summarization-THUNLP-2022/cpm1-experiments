@@ -1,4 +1,5 @@
 data
+train_data
 experiments/*/results
 experiments/*/*.log
 *__pycache__*
