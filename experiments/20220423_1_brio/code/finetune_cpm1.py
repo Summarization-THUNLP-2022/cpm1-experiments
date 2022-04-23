@@ -1,6 +1,7 @@
 import torch
 import bmtrain as bmt
 import os
+import torch.nn.functional as F
 
 from model_center import get_args
 from model_center.model import CPM1
@@ -89,11 +90,40 @@ def initialize():
 
 
 def prepare_dataset(args, tokenizer, base_path, dataset_name, rank, world_size):
-    splits = ['train', 'dev', 'test']
+    splits = ['train', 'dev']
     dataset = {}
-    for split in splits:
-        dataset[split] = DATASET[dataset_name](base_path, split, rank, world_size, tokenizer, args.max_length)
+    dataset['train'] = DATASET[dataset_name + '_train'](base_path, split, rank, world_size, tokenizer, args.max_length)
+    dataset['dev'] = DATASET[dataset_name](base_path, split, rank, world_size, tokenizer, args.max_length)
     return dataset
+
+
+def RankingLoss(score, summary_score=None, margin=0, gold_margin=0, gold_weight=1, no_gold=False, no_cand=False):
+    ones = torch.ones_like(score)
+    loss_func = torch.nn.MarginRankingLoss(0.0)
+    TotalLoss = loss_func(score, score, ones)
+    # candidate loss
+    n = score.size(1)
+    if not no_cand:
+        for i in range(1, n):
+            pos_score = score[:, :-i]
+            neg_score = score[:, i:]
+            pos_score = pos_score.contiguous().view(-1)
+            neg_score = neg_score.contiguous().view(-1)
+            ones = torch.ones_like(pos_score)
+            loss_func = torch.nn.MarginRankingLoss(margin * i)
+            loss = loss_func(pos_score, neg_score, ones)
+            TotalLoss += loss
+    if no_gold:
+        return TotalLoss
+    # gold summary loss
+    pos_score = summary_score.unsqueeze(-1).expand_as(score)
+    neg_score = score
+    pos_score = pos_score.contiguous().view(-1)
+    neg_score = neg_score.contiguous().view(-1)
+    ones = torch.ones_like(pos_score)
+    loss_func = torch.nn.MarginRankingLoss(gold_margin)
+    TotalLoss += gold_weight * loss_func(pos_score, neg_score, ones)
+    return TotalLoss
 
 
 def finetune(args, tokenizer, model, optimizer, lr_scheduler, dataset):
@@ -102,7 +132,6 @@ def finetune(args, tokenizer, model, optimizer, lr_scheduler, dataset):
     dataloader = {
         "train": DistributedDataLoader(dataset['train'], batch_size=args.batch_size, shuffle=True),
         "dev": DistributedDataLoader(dataset['dev'], batch_size=args.batch_size, shuffle=False),
-        "test": DistributedDataLoader(dataset['test'], batch_size=args.batch_size, shuffle=False),
     }
 
     for epoch in range(5):
@@ -115,19 +144,38 @@ def finetune(args, tokenizer, model, optimizer, lr_scheduler, dataset):
             targets = data["targets"].cuda()
             target_length = data["target_length"].cuda()
 
+            batch_size = input_tokens.size(0)
+            cand_num = input_tokens.size(1)
+
+            input_tokens = input_tokens.view(batch_size * cand_num, input_tokens.size(-1))
+            input_length = input_length.view(batch_size * cand_num)
+            input_context = input_context.view(batch_size * cand_num, input_context.size(-1))
+            input_span = input_span.view(batch_size * cand_num, input_span.size(-1))
+
             optimizer.zero_grad()
 
             logits = model(input_tokens, input_length, input_context, input_span)
-            # bmt.print_rank(logits[0])
 
-            loss = loss_func(logits.view(-1, logits.size(-1)), targets.view(-1))
+            logits = logits.view(batch_size, cand_num, logits.size(-2), logits.size(-1))
+            probs = F.log_softmax(logits, dim=3)
+            scores = torch.gather(probs, 3, targets.unsqueeze(-1)).squeeze(-1)
+            target_mask = (targets != -100)
+            scores = torch.mul(scores, target_mask).sum(-1) / (target_mask.sum(-1) ** args.length_penalty) # [bz, cand_num]
+            if args.no_gold:
+                ranking_loss = RankingLoss(scores[:, 1:], margin=args.margin, no_gold=True)
+            else:
+                ranking_loss = RankingLoss(scores[:, 1:], scores[:, 0], args.margin, args.gold_margin, args.gold_weight)
             
-            # 计算每个字符的平均loss
-            total_target_length = torch.sum(target_length)
-            global_loss = loss * total_target_length
-            global_loss = bmt.sum_loss(global_loss, method='sum').item()
-            global_length = bmt.sum_loss(total_target_length, method='sum').item()
-            avg_loss_now = global_loss / global_length
+            mle_probs = logits[:, 0]
+            mle_targets = targets[:, 0]
+
+            mle_loss = loss_func(mle_probs.view(-1, mle_probs.size(-1)), mle_targets.view(-1))
+
+            loss = args.rank_weight * ranking_loss + args.mle_weight * mle_loss
+            
+            global_ranking_loss = bmt.sum_loss(ranking_loss).item()
+            global_mle_loss = bmt.sum_loss(mle_loss).item()
+            global_loss = bmt.sum_loss(global_loss).item()
 
             loss = optimizer.loss_scale(loss)
             loss.backward()
@@ -136,11 +184,13 @@ def finetune(args, tokenizer, model, optimizer, lr_scheduler, dataset):
             bmt.optim_step(optimizer, lr_scheduler)
 
             bmt.print_rank(
-                "train | epoch {:3d} | Iter: {:6d}/{:6d} | loss: {:.4f} | lr: {:.4e}, scale: {:10.4f} | grad_norm: {:.4f} |".format(
+                "train | epoch {:3d} | Iter: {:6d}/{:6d} | ranking_loss: {:.4f} | mle_loss: {:.4f} |loss: {:.4f} | lr: {:.4e}, scale: {:10.4f} | grad_norm: {:.4f} |".format(
                     epoch,
                     it,
                     len(dataloader["train"]),
-                    avg_loss_now,
+                    global_ranking_loss,
+                    global_mle_loss,
+                    global_loss,
                     lr_scheduler.current_lr,
                     int(optimizer.scale),
                     grad_norm

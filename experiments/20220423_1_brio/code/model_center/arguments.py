@@ -117,6 +117,17 @@ def add_training_args(parser: argparse.ArgumentParser):
                        help='local rank passed from distributed launcher')
 
     return parser
+    
+
+def add_brio_args(parser: argparse.ArgumentParser):
+    group = parser.add_argument_group('brio', 'brio configuration')
+    group.add_argument('--length-penalty', type=float, default=2.0)
+    group.add_argument('--no-gold', default=False, action='store_true')
+    group.add_argument('--margin', type=float, default=0.001)
+    group.add_argument('--gold-margin', type=float, default=0)
+    group.add_argument('--gold-weight', type=float, default=0)
+    group.add_argument('--mle-weight', type=float, default=0.1)
+    group.add_argument('--rank-weight', type=float, default=10)
 
 
 def get_args():
