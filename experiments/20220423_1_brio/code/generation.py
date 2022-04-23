@@ -320,7 +320,7 @@ def generate_beam(model, tokenizer, lef_sentence, spans, beam_size = 3,
 
     lef = len(lef_tokens)
     rig = len(lef_tokens) + spans
-    bmp.print_rank(lef, rig)
+    # bmp.print_rank(lef, rig)
     with torch.inference_mode():
         for i in range(lef-1, rig-1):
             logits = model(input_tokens, input_length, context, input_span)
