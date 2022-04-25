@@ -29,29 +29,40 @@ def main():
 	file_dir = os.path.join(args.data_dir, args.dataset)
 
 	train_data = set()
+	train_map = {}
 	with open(os.path.join(file_dir, args.train_file_name), encoding='utf8') as fin:
 		for line in tqdm(fin):
-			train_data.add(tuple(json.loads(line)['summary']))
+			data = json.loads(line)
+			train_data.add((tuple(data['summary']), tuple(data['text'])))
+			train_map[tuple(data['summary'])] = data['text']
 
 	output_dir = os.path.join(args.output_dir, args.dataset)
 	if not os.path.exists(output_dir):
 		os.makedirs(output_dir)
 
-	with open(os.path.join(file_dir, args.dev_file_name), encoding='utf8') as fin, open(os.path.join(args.output_dir, args.dataset, args.dev_file_name + '.dedup'), 'w') as fout:
+	with open(os.path.join(file_dir, args.dev_file_name), encoding='utf8') as fin, open(os.path.join(args.output_dir, args.dataset, args.dev_file_name + '.dedup_all'), 'w') as fout:
 		for i, line in tqdm(enumerate(fin)):
-			rig_tokens = tuple(json.loads(line)['summary'])
+			data = json.loads(line)
+			rig_tokens = (tuple(data['summary']), tuple(data['text']))
 			if rig_tokens in train_data:
 				print(i, rig_tokens)
 			else:
-				fout.write(line)
+				if tuple(data['summary']) in train_map:
+					fout.write('---' + train_map[tuple(data['summary'])] + '---' + line)
+				else:
+					fout.write(line)
 
-	with open(os.path.join(file_dir, args.test_file_name), encoding='utf8') as fin, open(os.path.join(args.output_dir, args.dataset, args.test_file_name + '.dedup'), 'w') as fout:
+	with open(os.path.join(file_dir, args.test_file_name), encoding='utf8') as fin, open(os.path.join(args.output_dir, args.dataset, args.test_file_name + '.dedup_all'), 'w') as fout:
 		for i, line in tqdm(enumerate(fin)):
-			rig_tokens = tuple(json.loads(line)['summary'])
+			data = json.loads(line)
+			rig_tokens = (tuple(data['summary']), tuple(data['text']))
 			if rig_tokens in train_data:
 				print(i, rig_tokens)
 			else:
-				fout.write(line)
+				if tuple(data['summary']) in train_map:
+					fout.write('---' + train_map[tuple(data['summary'])] + '---' + line)
+				else:
+					fout.write(line)
 
 
 if __name__ == '__main__':
