@@ -4,7 +4,7 @@ MASTER_ADDR=localhost
 MASTER_PORT=13576
 NNODES=1
 NODE_RANK=0
-GPUS_PER_NODE=2
+GPUS_PER_NODE=4
 
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --nnodes $NNODES \
@@ -21,10 +21,10 @@ OPTS+=" --data-path ${CPM_TRAIN_DATA_PATH}"
 OPTS+=" --dataset ${DATASET}"
 OPTS+=" --base-path ${BASE_PATH}"
 OPTS+=" --model-config ${CPM_CACHE_PATH}/cpm1-small"
-OPTS+=" --batch-size 16"
+OPTS+=" --batch-size 32"
 OPTS+=" --train-iters 60000"
 OPTS+=" --save-iters 1000"
-OPTS+=" --max-length 2048"
+OPTS+=" --max-length 1024"
 OPTS+=" --save ${BASE_PATH}/results"
 OPTS+=" --save-name finetune-cpm1-ckpt"
 OPTS+=" --lr 5e-2"

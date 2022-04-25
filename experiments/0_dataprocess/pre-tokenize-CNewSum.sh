@@ -8,7 +8,7 @@ python $BASE_PATH/code/pre-tokenize.py \
 	--cache-path $CPM_CACHE_PATH \
 	--model-config cpm1-small \
 	--output-dir $CPM_TRAIN_DATA_PATH \
-	--max_length 1800
+	--max_length 900
 
 python $BASE_PATH/code/pre-tokenize.py \
 	--process-num 16 \
@@ -18,4 +18,4 @@ python $BASE_PATH/code/pre-tokenize.py \
 	--cache-path $CPM_CACHE_PATH \
 	--model-config cpm1-small \
 	--output-dir $CPM_TRAIN_DATA_PATH \
-	--max_length 1800
+	--max_length 900
