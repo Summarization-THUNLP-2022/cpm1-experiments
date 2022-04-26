@@ -41,12 +41,12 @@ class LCSTSInferDataset(InferDataset):
 
 
 class CNewSumInferDataset(InferDataset):
-	def __init__(self, file_path):
+	def __init__(self, file_path, max_length=1024):
 		super().__init__()
 		with open(file_path, 'r') as f:
 			for line in tqdm(f):
 				line_data = json.loads(line)
-				text = ''.join(line_data['article']).replace(' ', '')
+				text = ''.join(line_data['article']).replace(' ', '')[:max_length]
 				summary = line_data['summary'].replace(' ', '')
 				self._data.append({'text':text, 'summary':summary})
 

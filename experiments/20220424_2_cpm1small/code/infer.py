@@ -56,7 +56,7 @@ def main():
 
     fout = open("{}.{}".format(args.output_file, bmp.rank()), "w", encoding="utf-8")
 
-    dataset = INFER_DATASET[args.dataset_name](args.input_file)
+    dataset = INFER_DATASET[args.dataset_name](args.input_file, args.max_length)
     total_lines = len(dataset)
     step = (total_lines + bmp.world_size() -1) // bmp.world_size()
     for idx in range(step):

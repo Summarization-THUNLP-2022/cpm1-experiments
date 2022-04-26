@@ -14,7 +14,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 BASE_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
 DATASET="CNewSum"
-INPUT_FILE="dev.simple.label.jsonl"
+INPUT_FILE="test.simple.label.jsonl"
 MODEL_CONFIG_DIR=${CPM_CACHE_PATH}/cpm1-small
 EPOCH=3
 CKPT_STEPS=0
