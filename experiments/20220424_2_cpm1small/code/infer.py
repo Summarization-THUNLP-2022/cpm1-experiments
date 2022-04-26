@@ -13,6 +13,8 @@ from model_center.tokenizer import CPM1Tokenizer
 from model_center import get_args
 from generation import generate
 
+from infer_dataset import INFER_DATASET
+
 def get_tokenizer(args):
     tokenizer = CPM1Tokenizer(args.vocab_file)
     return tokenizer
@@ -53,20 +55,18 @@ def main():
     tokenizer, model = setup_model(args)
 
     fout = open("{}.{}".format(args.output_file, bmp.rank()), "w", encoding="utf-8")
-    fin = open('{}'.format(args.input_file), 'r', encoding='utf-8')
-    lines = fin.readlines()
-    fin.close()
-    total_lines = len(lines)
+
+    dataset = INFER_DATASET[args.dataset_name](args.input_file)
+    total_lines = len(dataset)
     step = (total_lines + bmp.world_size() -1) // bmp.world_size()
     for idx in range(step):
         # print(bmp.world_size())
         data_idx = step * bmp.rank() + idx
-        print(idx, bmp.rank())
 
-        if data_idx >= total_lines:
-            source = '“' + json.loads(lines[0])['text'] + '”的摘要是:'
-        else:
-            source = '“' + json.loads(lines[data_idx])['text'] + '”的摘要是:'
+        bmp.print_rank(idx)
+
+        text, golden_summary = dataset[data_idx]
+        source = '“' + text + '”的摘要是:'
         
         target_span_len = args.span_length
         # 每个instance指定不同的target span长度
@@ -86,7 +86,6 @@ def main():
                             temperature = args.temperature, top_k = args.top_k, top_p = args.top_p,
                             no_repeat_ngram_size = args.no_repeat_ngram_size, repetition_penalty = args.repetition_penalty, 
                             random_sample=args.random_sample, min_len=min_len):
-            
             if it == '<eod>':
                 break
 
@@ -96,10 +95,9 @@ def main():
 
         result_dict = {
             "summary": predict_sentence,
-            "text": json.loads(lines[data_idx])['text']
+            "text": text
         }
 
-        bmp.synchronize()
 
         if data_idx >= total_lines:
             continue

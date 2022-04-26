@@ -139,4 +139,5 @@ class CPM1(BaseModel):
         else:
             logits = self.input_embedding.projection(hidden_states)
 
+
         return logits
