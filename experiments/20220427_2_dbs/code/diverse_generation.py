@@ -17,14 +17,6 @@ class DiverseBeamHypotheses:
         assert self.n_hyp % self.n_group == 0
         self.group_hyp = self.n_hyp / self.n_group
 
-    def penalty_idx_list(self, group):
-        result = set()
-        for g in range(group):
-            for hyp in self.hyp[g]:
-                idx = hyp[1][-1]
-                result.add(int(idx))
-        return list(result)
-
 
     def add(self, group, hyp, sum_logprobs):
         """

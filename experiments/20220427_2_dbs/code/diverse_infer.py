@@ -9,7 +9,7 @@ import os
 import json
 from model_center.model import CPM1Config,CPM1 
 from model_center.tokenizer import CPM1Tokenizer 
-
+from tqdm import tqdm
 from model_center import get_args
 from diverse_generation import generate
 
@@ -59,7 +59,8 @@ def main():
     dataset = INFER_DATASET[args.dataset_name](args.input_file, args.max_length)
     total_lines = len(dataset)
     step = (total_lines + bmp.world_size() -1) // bmp.world_size()
-    for idx in range(step):
+    
+    def work(idx):
         # print(bmp.world_size())
         data_idx = step * bmp.rank() + idx
 
@@ -86,6 +87,13 @@ def main():
         
         for sent in result:
             fout.write(sent + '\n')
+
+    if bmp.rank() == 0:
+        for idx in tqdm(range(step)):
+            work(idx)
+    else:
+        for idx in range(step):
+            work(idx)
         
     fout.close()
 
