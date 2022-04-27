@@ -320,13 +320,14 @@ def generate_beam(model, tokenizer, lef_sentence, spans, beam_size = 3,
 
     lef = len(lef_tokens)
     rig = len(lef_tokens) + spans
+
     # bmp.print_rank(lef, rig)
     with torch.inference_mode():
         for i in range(lef-1, rig-1):
             logits = model(input_tokens, input_length, context, input_span)
 
-            if all(done):
-                break
+            # if all(done):
+            #     break
 
             logits = logits[:, i, :]
             logits = postprocess_next_token_scores(
@@ -370,6 +371,7 @@ def generate_beam(model, tokenizer, lef_sentence, spans, beam_size = 3,
                 )  # (batch_size, beam_size * vocab_size)
 
                 next_scores, next_words = torch.topk(next_scores, 2 * beam_size, dim=1, largest=True, sorted=True)
+
 
             assert next_scores.size() == next_words.size() == (batch_size, 2 * beam_size)
             # next batch beam content
