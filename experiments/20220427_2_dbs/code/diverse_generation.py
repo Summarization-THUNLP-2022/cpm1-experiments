@@ -348,11 +348,8 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 16, beam_group= 4, d
 
             for g in range(beam_group):
                 for sent_id in range(batch_size):
-                    idx_penalty = set()
                     for beam in next_batch_beam_group[sent_id][: g * beam_size_group]:
-                        idx_penalty.add(int(beam[1]))
-                    idx_penalty = list(idx_penalty)
-                    next_scores_all[sent_id,g,:,idx_penalty] -= diverse_penalty
+                        next_scores_all[sent_id, g, :, int(beam[1])] -= diverse_penalty
                 next_scores = next_scores_all.view(batch_size, beam_group, beam_size_group * vocab_size)
 
                 next_scores, next_words = torch.topk(next_scores, 2 * beam_size_group, dim=2, largest=True, sorted=True)
