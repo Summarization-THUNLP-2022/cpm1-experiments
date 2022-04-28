@@ -263,26 +263,6 @@ def round_up(x, d):
     return (x + d - 1) // d * d
 
 
-def make_input(lef_tokens, spans):
-    input = lef_tokens + [0 for i in range(spans)]
-    length = len(input)
-
-    rounded_length = round_up(length, 4)
-
-    input_tokens = torch.zeros(1, rounded_length, dtype=torch.int32)
-    input_span = torch.zeros(1, rounded_length, dtype=torch.int32)
-    
-    context = np.arange((rounded_length))
-    context = (context < len(lef_tokens)) | (context >= len(lef_tokens) + spans)
-    context = torch.from_numpy(context).view(1, -1).bool()
-
-    input_length = torch.zeros(1, dtype=torch.int32)
-    input_tokens[0, :length] = torch.tensor(input).int()
-    input_length[0] = length
-
-    return input_tokens.cuda(), input_length.cuda(), input_span.cuda(), context.cuda()
-
-
 def generate_beam(model, tokenizer, input_dict, beam_size = 3, 
                   temperature = .9, top_k = 0, top_p = 0.9,
                   no_repeat_ngram_size = 0, repetition_penalty = 1, random_sample=False, min_len=None):
