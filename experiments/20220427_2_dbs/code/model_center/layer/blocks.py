@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import torch
+import time
 
 from .attention import Attention
 from .layernorm import LayerNorm
@@ -466,5 +467,6 @@ class TransformerBlock(torch.nn.Module):
             hidden_states = hidden_states - self_hidden_states + hidden_states_2
         else:
             hidden_states = self.ffn(hidden_states)
+        
         return hidden_states
 

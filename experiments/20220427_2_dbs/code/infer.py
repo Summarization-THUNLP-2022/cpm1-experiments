@@ -65,12 +65,10 @@ def main():
     batch_dataset = BatchInferDataset(dataset, tokenizer, args.span_length, args.batch_size, batch_num)
     min_len = 2 # 确保生成内容不为空
     def work(input_dict):
-        bmp.print_rank("start generate", time.strftime("%Y-%m-%d, %H:%M:%S"))
         result = generate(model, tokenizer, input_dict, beam=args.beam_size,
                             temperature = args.temperature, top_k = args.top_k, top_p = args.top_p,
                             no_repeat_ngram_size = args.no_repeat_ngram_size, repetition_penalty = args.repetition_penalty, 
                             random_sample=args.random_sample, min_len=min_len)
-        bmp.print_rank("end generate", time.strftime("%Y-%m-%d, %H:%M:%S"))
         
         for sent in result:
             fout.write(sent + '\n')

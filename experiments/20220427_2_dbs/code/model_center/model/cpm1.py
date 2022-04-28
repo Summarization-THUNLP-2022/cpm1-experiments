@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import torch
+
 from ..layer import Encoder, Embedding, Linear, RelativePositionEmbedding
 from .config import CPM1Config
 from .basemodel import BaseModel
@@ -131,6 +132,7 @@ class CPM1(BaseModel):
 
         hidden_states = self.input_embedding(input)
         hidden_states = self.encoder(hidden_states, attention_mask, position_bias)
+
 
         if self.cls_head:
             logits = self.output_projection(hidden_states)

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import torch
 import bmtrain as bmt
 
@@ -131,6 +132,7 @@ class Encoder(torch.nn.Module):
 
         """
         # (batch, seq_enc, dim_model)
+        
         hidden_states = self.layers(hidden_states, attention_mask, position_bias, None, None, None)
         # (batch, seq_enc, dim_model)
         hidden_states = self.output_layernorm(hidden_states)

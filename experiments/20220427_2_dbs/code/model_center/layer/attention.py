@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+import time
 from typing import Optional
 
 import torch
@@ -168,6 +169,7 @@ class Attention(bmt.DistributedModule):
         # => (batch * num_heads, len_q, len_k)
         
         score = torch.matmul( h_q, h_k.transpose(1, 2))
+
         if self.attn_scale:
             score = score / math.sqrt(self.dim_head)
 
@@ -179,20 +181,27 @@ class Attention(bmt.DistributedModule):
                 # (batch, num_heads, len_q, len_k) + (1, num_heads, len_q, len_k) 
                 score = score + position_bias
         
-        score = torch.masked_fill(
-            score,
-            mask.view(batch_size, 1, len_q, len_k)==False,
-            torch.scalar_tensor(self.mask_value, device=score.device, dtype=score.dtype)
-        )   # (batch, num_heads, len_q, len_k)
+        # score = torch.masked_fill(
+        #     score,
+        #     mask.view(batch_size, 1, len_q, len_k)==False,
+        #     torch.scalar_tensor(self.mask_value, device=score.device, dtype=score.dtype)
+        # )   # (batch, num_heads, len_q, len_k)
 
+        score += torch.where(mask.view(batch_size, 1, len_q, len_k)==False, float("-inf"), 0.0)
+
+        # bmt.print_rank(f"end mask fill", int(round(time.time() * 1000)))
         score = self.softmax(score)
 
+        # bmt.print_rank(f"start masked fill 2", int(round(time.time() * 1000)))
         # avoid nan in softmax
-        score = torch.masked_fill(
-            score,
-            mask.view(batch_size, 1, len_q, len_k)==False,
-            torch.scalar_tensor(0, device=score.device, dtype=score.dtype)
-        ).view(batch_size * self.num_heads, len_q, len_k) # (batch * num_heads, len_q, len_k)
+        # score = torch.masked_fill(
+        #     score,
+        #     mask.view(batch_size, 1, len_q, len_k)==False,
+        #     torch.scalar_tensor(0, device=score.device, dtype=score.dtype)
+        # ).view(batch_size * self.num_heads, len_q, len_k) # (batch * num_heads, len_q, len_k)
+        
+        score = (score * (mask.view(batch_size, 1, len_q, len_k) == True)).view(batch_size * self.num_heads, len_q, len_k)
+
 
         if self.attention_dropout is not None:
             score = self.attention_dropout(score)
@@ -205,5 +214,6 @@ class Attention(bmt.DistributedModule):
 
         # (1#batch, dim_model, num_heads * dim_head) @ (batch, num_heads * dim_head, len_q) = (batch, dim_model, len_q)
         score = self.attention_out(score)
+
 
         return score

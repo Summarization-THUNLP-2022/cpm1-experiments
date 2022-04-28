@@ -330,13 +330,17 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
 
     # bmp.print_rank(lef, rig)
     with torch.inference_mode():
-        bmp.print_rank("start inference", time.strftime("%Y-%m-%d, %H:%M:%S"))
         for i in range(lef-1, rig-1):
-            bmp.print_rank(f"start inference {i}", time.strftime("%Y-%m-%d, %H:%M:%S"))
-            logits = model(input_tokens, input_length, context, input_span)
-            bmp.print_rank(f"end inference {i}", time.strftime("%Y-%m-%d, %H:%M:%S"))
 
-            # if all(done):
+            need_continue = torch.tensor(0.0 if all(done) else 1.0).to(input_tokens.device)
+            need_continue = bmp.sum_loss(need_continue)
+            if not need_continue:
+                bmp.print_rank("early stopping", i-(lef-1))
+                break
+
+
+            logits = model(input_tokens, input_length, context, input_span)
+
             #     break
 
             logits = logits[:, i, :]
