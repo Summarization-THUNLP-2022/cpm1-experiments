@@ -1,63 +1,49 @@
 import torch
 import torch.nn.functional as F
+import torch.distributed as dist
 import numpy as np
-import bmtrain as bmp
-import math
-import time
 
 
-class BeamHypotheses(object):
-
-    def __init__(self, n_hyp, max_len, length_penalty, early_stopping, tokenizer=None):
-        """
-        Initialize n-best list of hypotheses.
-        """
+class DiverseBeamHypotheses:
+    def __init__(self, n_hyp, n_group, max_len, length_penalty, early_stopping, tokenizer=None):
         self.max_len = max_len
         self.length_penalty = length_penalty
         self.early_stopping = early_stopping
         self.n_hyp = n_hyp
-        self.hyp = []
-        self.worst_score = 1e9
+        self.n_group = n_group
+        self.hyp = [[] for _ in range(n_group)]
+        self.worst_score = [1e9] * n_group
         self.tokenizer = tokenizer
+        assert self.n_hyp % self.n_group == 0
+        self.group_hyp = self.n_hyp / self.n_group
 
-    def __len__(self):
-        """
-        Number of hypotheses in the list.
-        """
-        return len(self.hyp)
 
-    def add(self, hyp, sum_logprobs):
+    def add(self, group, hyp, sum_logprobs):
         """
         Add a new hypothesis to the list.
         """
         score = sum_logprobs / len(hyp) ** self.length_penalty
-        # try to penalize repetation (fail)
-        # score = sum_logprobs / len(set(hyp.cpu().tolist())) ** self.length_penalty
-        
-        # bmp.print_rank(sum_logprobs, len(hyp))
-        # bmp.print_rank(f'score = {score}, hyp = {self.tokenizer.decode(hyp.cpu().tolist())}')
-        # bmp.print_rank('============================')
 
-        if len(self) < self.n_hyp or score > self.worst_score:
-            self.hyp.append((score, hyp))
-            if len(self) > self.n_hyp:
-                sorted_scores = sorted([(s, idx) for idx, (s, _) in enumerate(self.hyp)])
-                del self.hyp[sorted_scores[0][1]]
-                self.worst_score = sorted_scores[1][0]
+        if len(self.hyp[group]) < self.group_hyp or score > self.worst_score[group]:
+            self.hyp[group].append((score, hyp))
+            if len(self.hyp[group]) > self.group_hyp:
+                sorted_scores = sorted([(s, idx) for idx, (s, _) in enumerate(self.hyp[group])])
+                del self.hyp[group][sorted_scores[0][1]]
+                self.worst_score[group] = sorted_scores[1][0]
             else:
-                self.worst_score = min(score, self.worst_score)
+                self.worst_score[group] = min(score, self.worst_score[group])
         
-    def is_done(self, best_sum_logprobs, cur_len):
+    def is_done(self, group, best_sum_logprobs, cur_len):
         """
         If there are enough hypotheses and that none of the hypotheses being generated
         can become better than the worst one in the heap, then we are done with this sentence.
         """
-        if len(self) < self.n_hyp:
+        if len(self.hyp[group]) < self.group_hyp:
             return False
         elif self.early_stopping:
             return True
         else:
-            return self.worst_score >= best_sum_logprobs / cur_len ** self.length_penalty
+            return self.worst_score[group] >= best_sum_logprobs / cur_len ** self.length_penalty
 
 
 def _get_ngrams(ngram_size: int, prev_input_ids: torch.Tensor, num_hypos: int):
@@ -102,10 +88,7 @@ def calc_banned_ngram_tokens(
         _get_generated_ngrams(generated_ngrams[hypo_idx], prev_input_ids[hypo_idx], ngram_size, cur_len)
         for hypo_idx in range(num_hypos)
     ]
-    # for hypo_idx in range(num_hypos):
-    #     bmp.print_rank(tokenizer.decode(list(banned_tokens[hypo_idx][1])) + "|" + "/".join([tokenizer.decode([x]) for x in banned_tokens[hypo_idx][0]]))
     return banned_tokens
-    # return [x[0] for x in banned_tokens]
 
 
 # min_length_constriant
@@ -263,11 +246,30 @@ def round_up(x, d):
     return (x + d - 1) // d * d
 
 
-def generate_beam(model, tokenizer, input_dict, beam_size = 3, 
-                  temperature = .9, top_k = 0, top_p = 0.9,
-                  no_repeat_ngram_size = 0, repetition_penalty = 1, random_sample=False, min_len=None):
+def make_input(lef_tokens, spans):
+    input = lef_tokens + [0 for i in range(spans)]
+    length = len(input)
 
-    bmp.print_rank("start generate_beam", time.strftime("%Y-%m-%d, %H:%M:%S"))
+    rounded_length = round_up(length, 4)
+
+    input_tokens = torch.zeros(1, rounded_length, dtype=torch.int32)
+    input_span = torch.zeros(1, rounded_length, dtype=torch.int32)
+    
+    context = np.arange((rounded_length))
+    context = (context < len(lef_tokens)) | (context >= len(lef_tokens) + spans)
+    context = torch.from_numpy(context).view(1, -1).bool()
+
+    input_length = torch.zeros(1, dtype=torch.int32)
+    input_tokens[0, :length] = torch.tensor(input).int()
+    input_length[0] = length
+
+    return input_tokens.cuda(), input_length.cuda(), input_span.cuda(), context.cuda()
+
+
+def generate_beam(model, tokenizer, input_dict, beam_size = 16, beam_group= 4, diverse_penalty=0.5, no_repeat_ngram_size = 0, repetition_penalty = 1, min_len=None):
+    assert beam_size % beam_group == 0
+    beam_size_group = beam_size // beam_group
+
     vocab_size = tokenizer.vocab_size
 
     input_tokens = input_dict['input_tokens'].cuda()
@@ -292,39 +294,39 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
     input_span = input_span.contiguous().view(batch_size * beam_size, max_length)
     context = context.contiguous().view(batch_size * beam_size, max_length)
 
-    done = [False for _ in range(batch_size)]
+    done = [[False for _ in range(beam_group)] for _ in range(batch_size)]
     
-    beam_scores = torch.zeros((batch_size, beam_size), dtype=torch.float, device=input_tokens.device)
-    beam_scores[:, 1:] = -1e9
+    beam_scores = torch.zeros((batch_size, beam_group, beam_size_group), dtype=torch.float, device=input_tokens.device)
+    beam_scores[:, :, 1:] = -1e9
     beam_scores = beam_scores.view(-1)
 
     cur_len = 0
     
     generated_hyps = [
-        BeamHypotheses(beam_size, span_length, length_penalty=1, early_stopping=False, tokenizer=tokenizer)
+        DiverseBeamHypotheses(beam_size, beam_group, span_length, length_penalty=1, early_stopping=False, tokenizer=tokenizer)
         for _ in range(batch_size)
     ]
 
     lef = source_length
     rig = max_length
 
-    # bmp.print_rank(lef, rig)
     with torch.inference_mode():
+        past_key_values = None
         for i in range(lef-1, rig-1):
+            if sum([sum(d) for d in done]) == sum([len(d) for d in done]):
+                break
+            if i == lef-1:
+                # with torch.autograd.profiler.profile(with_stack=True, use_cuda=True) as prof:
+                logits, past_key_values = model(input_tokens[:, :i+1], input_length, context[:, :i+1], input_span[:, :i+1], past_key_values)
+                # if dist.get_rank() == 0:
+                #     print(prof.key_averages().table(sort_by='cuda_time_total'))
+                # logits = model(input_tokens, input_length, context, input_span)
 
-            # need_continue = torch.tensor(0.0 if all(done) else 1.0).to(input_tokens.device)
-            # need_continue = bmp.sum_loss(need_continue)
-            # if not need_continue:
-            #     bmp.print_rank("early stopping", i-(lef-1))
-            #     break
-
-
-            bmp.print_rank(f"{bmp.rank()} start model", int(round(time.time() * 1000)))
-            logits = model(input_tokens, input_length, context, input_span)
-            bmp.print_rank(f"{bmp.rank()} end model", int(round(time.time() * 1000)))
-
-            logits = logits[:, i, :]
-
+                logits = logits[:, -1, :]
+            else:
+                logits, past_key_values = model(input_tokens[:, i:i+1], input_length, context[:, :i+1], input_span[:, :i+1], past_key_values)
+                logits = logits[:, -1, :]
+            
             logits = postprocess_next_token_scores(
                 tokenizer=tokenizer,
                 scores=logits,
@@ -340,77 +342,65 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
                 min_len=min_len
             )
             scores = F.log_softmax(logits, dim=-1)
-            bmp.print_rank(f"{bmp.rank()} end postprocess", int(round(time.time() * 1000)))
+            
+            next_scores_all = scores + beam_scores[:, None].expand_as(scores)  # (batch_size * beam_size, vocab_size)
 
-            if random_sample:
-                # TODO: need to check this part
-                assert temperature != 0, "temperature should not be zero!"
-                scores = scores - math.log(temperature)
-                _scores = scores + beam_scores[:, None].expand_as(scores)
-                             
-                _scores = top_k_logits(_scores, top_k=top_k, top_p=top_p)
-                _scores = _scores.contiguous().view(batch_size, beam_size * vocab_size)
-                # Sample 2 next tokens for each beam (so we have some spare tokens and match output of greedy beam search)
-                probs = F.softmax(_scores, dim=-1)
-                next_words = torch.multinomial(probs, num_samples=2 * beam_size)  # (batch_size, beam_size * 2)
-                # Compute next scores
-                next_scores = torch.gather(_scores, -1, next_words)  # (batch_size, beam_size * 2)
-                # sort the sampled vector to make sure that the first beam_size samples are the best
-                next_scores, next_scores_indices = torch.sort(next_scores, descending=True, dim=1)
-                next_words = torch.gather(next_words, -1, next_scores_indices)  # (batch_size, beam_size * 2)            
-            else:
-                next_scores = scores + beam_scores[:, None].expand_as(scores)  # (batch_size * beam_size, vocab_size)
+            # re-organize to group the beam together (we are keeping top hypothesis accross beams)
+            next_scores_all = next_scores_all.view(
+                batch_size, beam_group, beam_size_group, vocab_size
+            )
 
-                # re-organize to group the beam together (we are keeping top hypothesis accross beams)
-                next_scores = next_scores.view(
-                    batch_size, beam_size * vocab_size
-                )  # (batch_size, beam_size * vocab_size)
+            next_batch_beam_group = [[] for _ in range(batch_size)]
 
-                next_scores, next_words = torch.topk(next_scores, 2 * beam_size, dim=1, largest=True, sorted=True)
+            for g in range(beam_group):
+                for sent_id in range(batch_size):
+                    for beam in next_batch_beam_group[sent_id][: g * beam_size_group]:
+                        next_scores_all[sent_id, g, :, int(beam[1])] -= diverse_penalty
+                next_scores = next_scores_all.view(batch_size, beam_group, beam_size_group * vocab_size)
 
+                next_scores, next_words = torch.topk(next_scores, 2 * beam_size_group, dim=2, largest=True, sorted=True)
 
-            assert next_scores.size() == next_words.size() == (batch_size, 2 * beam_size)
-            # next batch beam content
-            next_batch_beam = []
+                # next batch beam content
 
-            for sent_id in range(batch_size):
+                for sent_id in range(batch_size):
 
-                 # if we are done with this sentence
-                done[sent_id] = done[sent_id] or generated_hyps[sent_id].is_done(next_scores[sent_id].max().item(), cur_len)
-                if done[sent_id]:
-                    next_batch_beam.extend([(0, tokenizer.pad_id, 0)] * beam_size)  # pad the batch
-                    continue
+                    # if we are done with this sentence
+                    done[sent_id][g] = done[sent_id][g] or generated_hyps[sent_id].is_done(g, next_scores[sent_id][g].max().item(), cur_len)
+                    if done[sent_id][g]:
+                        next_batch_beam_group[sent_id].extend([(0, tokenizer.pad_id, 0)] * beam_size_group)  # pad the batch
+                        continue
 
-                # next sentence beam content
-                next_sent_beam = []
+                    # next sentence beam content
+                    next_sent_beam = []
 
-                # next words for this sentence
-                for idx, value in zip(next_words[sent_id], next_scores[sent_id]):
+                    # next words for this sentence
+                    for idx, value in zip(next_words[sent_id][g], next_scores[sent_id][g]):
 
-                    # get beam and word IDs
-                    beam_id = idx // vocab_size
-                    word_id = idx % vocab_size
+                        # get beam and word IDs
+                        beam_id = idx // vocab_size
+                        word_id = idx % vocab_size
 
-                    # end of sentence, or next word
-                    if word_id == tokenizer.eod_id or cur_len + 1 == span_length:
-                        if cur_len > 0:
-                            generated_hyps[sent_id].add(input_tokens[sent_id * beam_size + beam_id, lef:lef+cur_len].clone(), value.item())
-                    # elif cur_len + 1 == span_length:
-                    #     # 没有正常结束，指定为很低的分数
-                    #     generated_hyps[sent_id].add(input_tokens[sent_id * beam_size + beam_id, lef:lef+cur_len].clone(), -50000)
-                    else:
-                        next_sent_beam.append((value, word_id, sent_id * beam_size + beam_id))
+                        # end of sentence, or next word
+                        if word_id == tokenizer.eod_id or cur_len + 1 == span_length:
+                            if cur_len > 0:
+                                generated_hyps[sent_id].add(g, input_tokens[sent_id * beam_size + g * beam_size_group + beam_id, lef:lef+cur_len].clone(), value.item())
+                        # elif cur_len + 1 == span_length:
+                        #     # 没有正常结束，指定为很低的分数
+                        #     generated_hyps[sent_id].add(input_tokens[sent_id * beam_size + beam_id, lef:lef+cur_len].clone(), -50000)
+                        else:
+                            next_sent_beam.append((value, word_id, sent_id * beam_size + g * beam_size_group + beam_id))
 
-                    # the beam for next step is full
-                    if len(next_sent_beam) == beam_size:
-                        break
+                        # the beam for next step is full
+                        if len(next_sent_beam) == beam_size_group:
+                            break
 
-                # update next beam content
-                assert len(next_sent_beam) == 0 if cur_len + 1 == span_length else beam_size
-                if len(next_sent_beam) == 0:
-                    next_sent_beam = [(0, tokenizer.pad_id, 0)] * beam_size  # pad the batch
-                next_batch_beam.extend(next_sent_beam)
-                assert len(next_batch_beam) == beam_size * (sent_id + 1)
+                    # update next beam content
+                    assert len(next_sent_beam) == 0 if cur_len + 1 == span_length else beam_size
+                    if len(next_sent_beam) == 0:
+                        next_sent_beam = [(0, tokenizer.pad_id, 0)] * beam_size_group  # pad the batch
+                    next_batch_beam_group[sent_id].extend(next_sent_beam)
+
+            next_batch_beam = [sent_beam for sent_beam_group in next_batch_beam_group for sent_beam in sent_beam_group]
 
             # sanity check / prepare next batch
             assert len(next_batch_beam) == batch_size * beam_size
@@ -425,36 +415,27 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
             # update current length
             cur_len = cur_len + 1
 
-        # select the best hypotheses
-        tgt_len = input_length.new(batch_size)
-        best = []
+
+        result = []
 
         for i, hypotheses in enumerate(generated_hyps):
-            best_hyp = max(hypotheses.hyp, key=lambda x: x[0])[1]
-            tgt_len[i] = len(best_hyp) + 1  # +1 for the <EOS> symbol
-            hyp_sent = ""
-            for id in best_hyp:
-                token = tokenizer.decode([int(id)])
-                if token == '<eod>':
-                    break
-                hyp_sent += token
-            best.append(hyp_sent)
+            for group in hypotheses.hyp:
+                for hyp in group:
+                    hyp_sent = ""
+                    for id in hyp[1]:
+                        token = tokenizer.decode([int(id)])
+                        if token == '<eod>':
+                            break
+                        hyp_sent += token
+                    result.append(hyp_sent)
+                    
+        return result
 
-        return best
 
-
-def generate(model, tokenizer, input_dict, beam,
-                     temperature = .9, top_k = 0, top_p = 0.9,
-                     no_repeat_ngram_size = 0, repetition_penalty = 1,
-                     random_sample=False, min_len=None):
-    if beam == 1:
-        return None
-        # generation_str = generate_no_beam_cpm3(model, tokenizer, instance, target_span_len,
-        #                                 temperature, top_k, top_p,
-        #                                 no_repeat_ngram_size, repetition_penalty, random_sample, min_len)
+def diverse_beam_search_generate(model, tokenizer, input_dict, beam_size = 16, beam_group= 4, diverse_penalty=0.5, no_repeat_ngram_size = 0, repetition_penalty = 1, min_len=None):
+    if beam_size == 1:
+        pass
     else:
-        generation_str = generate_beam(model, tokenizer, input_dict, beam,
-                                    temperature, top_k, top_p,
-                                    no_repeat_ngram_size, repetition_penalty, random_sample, min_len)
+        generation_str = generate_beam(model, tokenizer, input_dict, beam_size=beam_size, beam_group=beam_group, diverse_penalty=diverse_penalty, no_repeat_ngram_size=no_repeat_ngram_size, repetition_penalty=repetition_penalty, min_len=None)
 
     return generation_str

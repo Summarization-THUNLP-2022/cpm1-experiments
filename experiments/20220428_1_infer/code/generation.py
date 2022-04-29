@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-import bmtrain as bmp
 import math
+import torch.distributed as dist
 import time
 
 
@@ -34,9 +34,6 @@ class BeamHypotheses(object):
         # try to penalize repetation (fail)
         # score = sum_logprobs / len(set(hyp.cpu().tolist())) ** self.length_penalty
         
-        # bmp.print_rank(sum_logprobs, len(hyp))
-        # bmp.print_rank(f'score = {score}, hyp = {self.tokenizer.decode(hyp.cpu().tolist())}')
-        # bmp.print_rank('============================')
 
         if len(self) < self.n_hyp or score > self.worst_score:
             self.hyp.append((score, hyp))
@@ -102,10 +99,7 @@ def calc_banned_ngram_tokens(
         _get_generated_ngrams(generated_ngrams[hypo_idx], prev_input_ids[hypo_idx], ngram_size, cur_len)
         for hypo_idx in range(num_hypos)
     ]
-    # for hypo_idx in range(num_hypos):
-    #     bmp.print_rank(tokenizer.decode(list(banned_tokens[hypo_idx][1])) + "|" + "/".join([tokenizer.decode([x]) for x in banned_tokens[hypo_idx][0]]))
     return banned_tokens
-    # return [x[0] for x in banned_tokens]
 
 
 # min_length_constriant
@@ -267,7 +261,6 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
                   temperature = .9, top_k = 0, top_p = 0.9,
                   no_repeat_ngram_size = 0, repetition_penalty = 1, random_sample=False, min_len=None):
 
-    bmp.print_rank("start generate_beam", time.strftime("%Y-%m-%d, %H:%M:%S"))
     vocab_size = tokenizer.vocab_size
 
     input_tokens = input_dict['input_tokens'].cuda()
@@ -308,20 +301,12 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
     lef = source_length
     rig = max_length
 
-    # bmp.print_rank(lef, rig)
     with torch.inference_mode():
         for i in range(lef-1, rig-1):
-
-            # need_continue = torch.tensor(0.0 if all(done) else 1.0).to(input_tokens.device)
-            # need_continue = bmp.sum_loss(need_continue)
-            # if not need_continue:
-            #     bmp.print_rank("early stopping", i-(lef-1))
-            #     break
-
-
-            bmp.print_rank(f"{bmp.rank()} start model", int(round(time.time() * 1000)))
-            logits = model(input_tokens, input_length, context, input_span)
-            bmp.print_rank(f"{bmp.rank()} end model", int(round(time.time() * 1000)))
+            with torch.autograd.profiler.profile(enabled=True, use_cuda=True) as prof:
+                logits = model(input_tokens, input_length, context, input_span)
+            if dist.get_rank() == 0:
+                print(prof.table())
 
             logits = logits[:, i, :]
 
@@ -340,7 +325,6 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
                 min_len=min_len
             )
             scores = F.log_softmax(logits, dim=-1)
-            bmp.print_rank(f"{bmp.rank()} end postprocess", int(round(time.time() * 1000)))
 
             if random_sample:
                 # TODO: need to check this part
