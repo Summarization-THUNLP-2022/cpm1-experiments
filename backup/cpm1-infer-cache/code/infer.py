@@ -67,8 +67,9 @@ def main():
                         temperature = args.temperature, top_k = args.top_k, top_p = args.top_p,
                         no_repeat_ngram_size = args.no_repeat_ngram_size, repetition_penalty = args.repetition_penalty, 
                         random_sample=args.random_sample, min_len=min_len)
+        
         for idx, sent in enumerate(result):
-            fout.write(sent + '\t' + str(input_dict['ids'][idx]) + '\n')
+            fout.write(sent + '\t' + str(input_dict['ids'][idx // args.beam_size]) + '\n')
             fout.flush()
 
     if args.local_rank == 0:

@@ -1,4 +1,0 @@
-这个实验创建的目的是为了与20220417_1_cpm1small做对比。
-两个实验的区别是：
-20220417_1_cpm1small的输入为：xxxxxx的摘要是：yyyyyy
-本实验将其修改为："xxxxxx"的摘要是：yyyyyy

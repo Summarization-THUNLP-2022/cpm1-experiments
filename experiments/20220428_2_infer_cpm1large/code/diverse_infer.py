@@ -1,15 +1,18 @@
 #coding:utf-8
 
+import time
+import random
 import torch
+import bmtrain as bmp
 import numpy as np
 import os
+import json
 from model_center.model import CPM1Config,CPM1 
 from model_center.tokenizer import CPM1Tokenizer 
 from tqdm import tqdm
 import torch.distributed as dist
-
 from model_center import get_args
-from generation import generate
+from diverse_generation import diverse_beam_search_generate
 
 from infer_dataset import INFER_DATASET, BatchInferDataset
 
@@ -63,12 +66,13 @@ def main():
     batch_dataset = BatchInferDataset(dataset, tokenizer, args.span_length, args.batch_size, batch_num)
     min_len = 2 # 确保生成内容不为空
     def work(input_dict):
-        result = generate(model, tokenizer, input_dict, beam=args.beam_size,
-                        temperature = args.temperature, top_k = args.top_k, top_p = args.top_p,
-                        no_repeat_ngram_size = args.no_repeat_ngram_size, repetition_penalty = args.repetition_penalty, 
-                        random_sample=args.random_sample, min_len=min_len)
+        result = diverse_beam_search_generate(model, tokenizer, input_dict, beam_size=args.beam_size, 
+                                              beam_group=args.beam_group, diverse_penalty=args.diverse_penalty, 
+                                              no_repeat_ngram_size = args.no_repeat_ngram_size, 
+                                              repetition_penalty = args.repetition_penalty, min_len=min_len)
+        
         for idx, sent in enumerate(result):
-            fout.write(sent + '\t' + str(input_dict['ids'][idx]) + '\n')
+            fout.write(sent + '\t' + str(input_dict['ids'][idx // args.beam_size]) + '\n')
             fout.flush()
 
     if args.local_rank == 0:
@@ -79,6 +83,7 @@ def main():
             work(input_dict)
         
     fout.close()
+
 
 if __name__ == "__main__":
     main()
