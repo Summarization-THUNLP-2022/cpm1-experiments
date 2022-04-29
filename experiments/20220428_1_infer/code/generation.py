@@ -302,13 +302,18 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
     rig = max_length
 
     with torch.inference_mode():
+        past_key_values = None
         for i in range(lef-1, rig-1):
-            with torch.autograd.profiler.profile(enabled=True, use_cuda=True) as prof:
-                logits = model(input_tokens, input_length, context, input_span)
-            if dist.get_rank() == 0:
-                print(prof.table())
-
-            logits = logits[:, i, :]
+            if all(done):
+                break
+            
+            if i == lef-1:
+                logits, past_key_values = model(input_tokens[:, :i+1], input_length, context[:, :i+1], input_span[:, :i+1], past_key_values)
+                logits = logits[:, -1, :]
+            else:
+                logits, past_key_values = model(input_tokens[:, i:i+1], input_length, context[:, :i+1], input_span[:, :i+1], past_key_values)
+                logits = logits[:, -1, :]
+            
 
             logits = postprocess_next_token_scores(
                 tokenizer=tokenizer,
@@ -405,6 +410,10 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
             # re-order batch and internal states
             input_tokens = input_tokens[beam_idx, :]
             input_tokens[:, lef + cur_len] = beam_words
+
+            for key_value_layer in past_key_values:
+                key_value_layer[0] = key_value_layer[0][beam_idx]
+                key_value_layer[1] = key_value_layer[1][beam_idx]
 
             # update current length
             cur_len = cur_len + 1

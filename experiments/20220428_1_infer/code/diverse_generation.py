@@ -315,13 +315,9 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 16, beam_group= 4, d
         for i in range(lef-1, rig-1):
             if sum([sum(d) for d in done]) == sum([len(d) for d in done]):
                 break
+            
             if i == lef-1:
-                # with torch.autograd.profiler.profile(with_stack=True, use_cuda=True) as prof:
                 logits, past_key_values = model(input_tokens[:, :i+1], input_length, context[:, :i+1], input_span[:, :i+1], past_key_values)
-                # if dist.get_rank() == 0:
-                #     print(prof.key_averages().table(sort_by='cuda_time_total'))
-                # logits = model(input_tokens, input_length, context, input_span)
-
                 logits = logits[:, -1, :]
             else:
                 logits, past_key_values = model(input_tokens[:, i:i+1], input_length, context[:, :i+1], input_span[:, :i+1], past_key_values)
@@ -412,6 +408,10 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 16, beam_group= 4, d
             input_tokens = input_tokens[beam_idx, :]
             input_tokens[:, lef + cur_len] = beam_words
 
+            for key_value_layer in past_key_values:
+                key_value_layer[0] = key_value_layer[0][beam_idx]
+                key_value_layer[1] = key_value_layer[1][beam_idx]
+
             # update current length
             cur_len = cur_len + 1
 
@@ -428,7 +428,6 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 16, beam_group= 4, d
                             break
                         hyp_sent += token
                     result.append(hyp_sent)
-                    
         return result
 
 

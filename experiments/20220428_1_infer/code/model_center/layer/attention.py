@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+import torch.distributed as dist
 import torch.autograd.profiler as profiler
 from typing import Optional
 
@@ -150,10 +151,9 @@ class Attention(torch.nn.Module):
         len_q = query.size(1)
         len_k = key_value.size(1)
 
-        with profiler.record_function("self attention project"):
-            h_q = self.project_q(query)             # (batch, len_q, num_heads * dim_head)
-            h_k = self.project_k(key_value)         # (batch, len_k, num_heads * dim_head)
-            h_v = self.project_v(key_value)         # (batch, len_k, num_heads * dim_head)
+        h_q = self.project_q(query)             # (batch, len_q, num_heads * dim_head)
+        h_k = self.project_k(key_value)         # (batch, len_k, num_heads * dim_head)
+        h_v = self.project_v(key_value)         # (batch, len_k, num_heads * dim_head)
 
         h_q = h_q.view(batch_size, len_q, self.num_heads, self.dim_head).permute(0, 2, 1, 3).contiguous()   # (batch, num_heads, len_q, dim_head)
         h_k = h_k.view(batch_size, len_k, self.num_heads, self.dim_head).permute(0, 2, 1, 3).contiguous()   # (batch, num_heads, len_k, dim_head)
@@ -164,7 +164,9 @@ class Attention(torch.nn.Module):
             h_k = torch.cat((past_key, h_k), dim=-2)
             h_v = torch.cat((past_value, h_v), dim=-2)
             len_k = h_k.size(-2)
-        present_key_value = (h_k, h_v)
+        
+        present_key_value = [h_k, h_v]
+
 
         h_q = h_q.view(batch_size * self.num_heads, len_q, self.dim_head)      # (batch * num_heads, len_q, dim_head)
         h_k = h_k.view(batch_size * self.num_heads, len_k, self.dim_head)      # (batch * num_heads, len_k, dim_head)
@@ -175,8 +177,8 @@ class Attention(torch.nn.Module):
 
         # (batch * num_heads, len_q, dim_head) @ (batch * num_heads, len_k, dim_head)T 
         # => (batch * num_heads, len_q, len_k)
-        with profiler.record_function("self attention matmul 1"):
-            score = torch.matmul( h_q, h_k.transpose(1, 2))
+        score = torch.matmul( h_q, h_k.transpose(1, 2))
+
 
         if self.attn_scale:
             score = score / math.sqrt(self.dim_head)
@@ -189,41 +191,36 @@ class Attention(torch.nn.Module):
                 # (batch, num_heads, len_q, len_k) + (1, num_heads, len_q, len_k) 
                 score = score + position_bias
         
-        with profiler.record_function("self attention masked view 1"):
-            # score = torch.masked_fill(
-            #     score,
-            #     mask.view(batch_size, 1, len_q, len_k)==False,
-            #     torch.scalar_tensor(self.mask_value, device=score.device, dtype=score.dtype)
-            # )   # (batch, num_heads, len_q, len_k)
+        # score = torch.masked_fill(
+        #     score,
+        #     mask.view(batch_size, 1, len_q, len_k)==False,
+        #     torch.scalar_tensor(self.mask_value, device=score.device, dtype=score.dtype)
+        # )   # (batch, num_heads, len_q, len_k)
 
-            score += torch.where(mask.view(batch_size, 1, len_q, len_k)==False, float("-inf"), 0.0)
+        score += torch.where(mask.view(batch_size, 1, len_q, len_k)==False, float("-inf"), 0.0)
 
-        with profiler.record_function("self attention softmax 1"):
-            score = self.softmax(score)
+        score = self.softmax(score)
 
         # avoid nan in softmax
-        with profiler.record_function("self attention masked view 2"):
-            # score = torch.masked_fill(
-            #     score,
-            #     mask.view(batch_size, 1, len_q, len_k)==False,
-            #     torch.scalar_tensor(0, device=score.device, dtype=score.dtype)
-            # ).view(batch_size * self.num_heads, len_q, len_k) # (batch * num_heads, len_q, len_k)
+        # score = torch.masked_fill(
+        #     score,
+        #     mask.view(batch_size, 1, len_q, len_k)==False,
+        #     torch.scalar_tensor(0, device=score.device, dtype=score.dtype)
+        # ).view(batch_size * self.num_heads, len_q, len_k) # (batch * num_heads, len_q, len_k)
         
-            score = (score * (mask.view(batch_size, 1, len_q, len_k) == True)).view(batch_size * self.num_heads, len_q, len_k)
+        score = (score * (mask.view(batch_size, 1, len_q, len_k) == True)).view(batch_size * self.num_heads, len_q, len_k)
 
 
         if self.attention_dropout is not None:
             score = self.attention_dropout(score)
 
-         # (batch * num_heads, len_q, len_k) @ (batch * num_heads, len_k, dim_head) = (batch * num_heads, len_q, dim_head)
-        with profiler.record_function("self attention matmul 2"):
-            score = torch.matmul(score, h_v)
+        # (batch * num_heads, len_q, len_k) @ (batch * num_heads, len_k, dim_head) = (batch * num_heads, len_q, dim_head)
+        score = torch.matmul(score, h_v)
 
         score = score.view(batch_size, self.num_heads, len_q, self.dim_head).permute(0, 2, 1, 3) # (batch, len_q, num_heads, dim_head)
         score = score.reshape(batch_size, len_q, self.num_heads * self.dim_head) # (batch, len_q, num_heads * dim_head)
 
         # (1#batch, dim_model, num_heads * dim_head) @ (batch, num_heads * dim_head, len_q) = (batch, dim_model, len_q)
-        with profiler.record_function("self attention attention out"):
-            score = self.attention_out(score)
+        score = self.attention_out(score)
 
         return score, present_key_value

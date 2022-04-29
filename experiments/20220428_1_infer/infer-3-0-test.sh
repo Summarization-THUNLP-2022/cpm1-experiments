@@ -14,7 +14,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 BASE_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
 DATASET="CNewSum"
-INPUT_FILE="train.simple.label.jsonl"
+INPUT_FILE="train.jsonl.1024"
 MODEL_CONFIG_DIR=${CPM_CACHE_PATH}/cpm1-small
 EPOCH=3
 CKPT_STEPS=0
@@ -34,7 +34,7 @@ OPTS+=" --dataset ${DATASET}"
 OPTS+=" --model-config ${MODEL_CONFIG_DIR}/config.json"
 OPTS+=" --vocab-file ${MODEL_CONFIG_DIR}/vocab.txt"
 OPTS+=" --load ${BASE_PATH}/results/finetune-cpm1-ckpt-${EPOCH}-${CKPT_STEPS}.pt"
-OPTS+=" --input-file ${CPM_DATA_PATH}/${DATASET}/${INPUT_FILE}"
+OPTS+=" --input-file ${CPM_TRAIN_DATA_PATH}/${DATASET}/${INPUT_FILE}"
 OPTS+=" --output-file ${OUTPUT_FILE}"
 OPTS+=" --span-length 40"
 OPTS+=" --temperature 1"

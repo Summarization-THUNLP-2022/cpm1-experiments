@@ -58,7 +58,7 @@ def main():
     dataset = INFER_DATASET[args.dataset_name](args.input_file, args.max_length)
     total_lines = dataset.total_length
     step = (total_lines + dist.get_world_size() -1) // dist.get_world_size()
-    dataset.read_dataset(step * args.local_rank, step * (args.local_rank + 1))
+    dataset.read_dataset(step * args.local_rank, step * (args.local_rank + 1), tokenizer)
     batch_num = (step + args.batch_size - 1) // args.batch_size
     batch_dataset = BatchInferDataset(dataset, tokenizer, args.span_length, args.batch_size, batch_num)
     min_len = 2 # 确保生成内容不为空
