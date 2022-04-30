@@ -16,7 +16,7 @@ BASE_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
 DATASET="CNewSum"
 INPUT_FILE="test.simple.label.jsonl.900"
 MODEL_CONFIG_DIR=${CPM_CACHE_PATH}/cpm1-large
-EPOCH=3
+EPOCH=2
 CKPT_STEPS=0
 OUTPUT_FILE=${BASE_PATH}/infer_results/${INPUT_FILE}/${EPOCH}-${CKPT_STEPS}.jsonl
 
@@ -36,14 +36,14 @@ OPTS+=" --vocab-file ${MODEL_CONFIG_DIR}/vocab.txt"
 OPTS+=" --load ${BASE_PATH}/results/finetune-cpm1-ckpt-${EPOCH}-${CKPT_STEPS}.pt"
 OPTS+=" --input-file ${CPM_TRAIN_DATA_PATH}/${DATASET}/${INPUT_FILE}"
 OPTS+=" --output-file ${OUTPUT_FILE}"
-OPTS+=" --span-length 40"
+OPTS+=" --span-length 100"
 OPTS+=" --temperature 1"
 OPTS+=" --top-k 0"
 OPTS+=" --top-p 0"
 OPTS+=" --no-repeat-ngram-size 0"
 OPTS+=" --repetition-penalty 2"
 OPTS+=" --beam-size 5"
-OPTS+=" --batch-size 8"
+OPTS+=" --batch-size 4"
 # OPTS+=" --random-sample"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${BASE_PATH}/code/infer.py ${OPTS}"

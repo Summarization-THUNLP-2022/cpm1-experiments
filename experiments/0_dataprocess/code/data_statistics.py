@@ -3,6 +3,7 @@
 import json
 import argparse
 import os
+import numpy as np
 
 import matplotlib.pyplot as plt
 
@@ -13,9 +14,9 @@ def get_args():
 	parser = argparse.ArgumentParser()
 
 	# input data
-	parser.add_argument('--data-dir', type=str, default='/home/zhaoxinhao/data1/cpm1-experiments/data')
+	parser.add_argument('--data-dir', type=str, default='/home/zhaoxinhao/data2/cpm1/data')
 	parser.add_argument('--dataset', type=str, default='CNewSum')
-	parser.add_argument('--file-name', type=str, default='train.simple.label.jsonl')
+	parser.add_argument('--file-name', type=str, default='dev.simple.label.jsonl')
 	# parser.add_argument('--is_tokenized', default=False, action='store_true')
 
 	# tokenizer
@@ -37,7 +38,7 @@ dataset.read_data(file_path)
 print(dataset.size)
 
 plt.hist(dataset.summary_len)
-
+print(np.average(dataset.summary_len))
 # %%
 plt.hist(dataset.text_len)
 # %%
@@ -60,3 +61,36 @@ plt.hist(pretokenized_dataset.text_len)
 
 # %%
 # %%
+import numpy as np
+# %%
+text_len = np.array(dataset.text_len)
+summary_len = np.array(dataset.summary_len)
+# %%
+ratio = text_len / summary_len
+print(ratio[:10])
+# %%
+plt.hist(ratio, bins=40, range=(0, 100))
+# %%
+np.average(ratio)
+# %%
+text_lens = []
+with open("/home/zhaoxinhao/data2/cpm1/data/CLTS/train.src") as f:
+	for line in f:
+		line = ''.join(line.strip().split())
+		text_lens.append(len(line))
+# %%
+summary_lens = []
+with open("/home/zhaoxinhao/data2/cpm1/data/CLTS/train.tgt") as f:
+	for line in f:
+		line = ''.join(line.strip().split())
+		summary_lens.append(len(line))
+
+# %%
+text_lens = np.array(text_lens)
+summary_lens = np.array(summary_lens)
+# %%
+np.average(text_lens / summary_lens)
+# %%
+ratio = text_lens / summary_lens
+# %%
+plt.hist(ratio, bins=40, range=(0, 100))

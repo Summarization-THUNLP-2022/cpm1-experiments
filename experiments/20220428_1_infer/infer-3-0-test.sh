@@ -1,10 +1,10 @@
 #! /bin/bash
 
 MASTER_ADDR=localhost
-MASTER_PORT=13583
+MASTER_PORT=13585
 NNODES=1
 NODE_RANK=0
-GPUS_PER_NODE=4
+GPUS_PER_NODE=6
 
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --nnodes $NNODES \
@@ -36,7 +36,7 @@ OPTS+=" --vocab-file ${MODEL_CONFIG_DIR}/vocab.txt"
 OPTS+=" --load ${BASE_PATH}/results/finetune-cpm1-ckpt-${EPOCH}-${CKPT_STEPS}.pt"
 OPTS+=" --input-file ${CPM_TRAIN_DATA_PATH}/${DATASET}/${INPUT_FILE}"
 OPTS+=" --output-file ${OUTPUT_FILE}"
-OPTS+=" --span-length 40"
+OPTS+=" --span-length 100"
 OPTS+=" --temperature 1"
 OPTS+=" --top-k 0"
 OPTS+=" --top-p 0"
@@ -44,6 +44,7 @@ OPTS+=" --no-repeat-ngram-size 0"
 OPTS+=" --repetition-penalty 2"
 OPTS+=" --beam-size 5"
 OPTS+=" --batch-size 16"
+OPTS+=" --length-penalty 1.5"
 # OPTS+=" --random-sample"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${BASE_PATH}/code/infer.py ${OPTS}"

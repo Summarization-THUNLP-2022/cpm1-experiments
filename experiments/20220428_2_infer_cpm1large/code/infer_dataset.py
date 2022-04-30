@@ -93,9 +93,9 @@ class BatchInferDataset:
 			ids.append(data_id)
 		source_length = max([len(tokens) for tokens in lef_tokens])
 		total_length = source_length + self.__span_length
-		input_tokens = torch.zeros((self.__batch_size, total_length), dtype=torch.int32)
-		input_span = torch.zeros((self.__batch_size, total_length), dtype=torch.int32)
-		context = torch.zeros((self.__batch_size, total_length), dtype=bool)
+		input_tokens = torch.zeros((len(lef_tokens), total_length), dtype=torch.int32)
+		input_span = torch.zeros((len(lef_tokens), total_length), dtype=torch.int32)
+		context = torch.zeros((len(lef_tokens), total_length), dtype=bool)
 		for i in range(end-start):
 			pad_length = source_length - len(lef_tokens[i])
 			input_tokens[i, pad_length:source_length] = torch.Tensor(lef_tokens[i]).int()

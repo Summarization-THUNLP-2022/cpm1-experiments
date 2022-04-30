@@ -257,7 +257,7 @@ def round_up(x, d):
     return (x + d - 1) // d * d
 
 
-def generate_beam(model, tokenizer, input_dict, beam_size = 3, 
+def generate_beam(model, tokenizer, input_dict, beam_size = 3, length_penalty=1, 
                   temperature = .9, top_k = 0, top_p = 0.9,
                   no_repeat_ngram_size = 0, repetition_penalty = 1, random_sample=False, min_len=None):
 
@@ -294,7 +294,7 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
     cur_len = 0
     
     generated_hyps = [
-        BeamHypotheses(beam_size, span_length, length_penalty=1, early_stopping=False, tokenizer=tokenizer)
+        BeamHypotheses(beam_size, span_length, length_penalty=length_penalty, early_stopping=False, tokenizer=tokenizer)
         for _ in range(batch_size)
     ]
 
@@ -436,7 +436,7 @@ def generate_beam(model, tokenizer, input_dict, beam_size = 3,
         return best
 
 
-def generate(model, tokenizer, input_dict, beam,
+def generate(model, tokenizer, input_dict, beam, length_penalty = 1,
                      temperature = .9, top_k = 0, top_p = 0.9,
                      no_repeat_ngram_size = 0, repetition_penalty = 1,
                      random_sample=False, min_len=None):
@@ -446,7 +446,7 @@ def generate(model, tokenizer, input_dict, beam,
         #                                 temperature, top_k, top_p,
         #                                 no_repeat_ngram_size, repetition_penalty, random_sample, min_len)
     else:
-        generation_str = generate_beam(model, tokenizer, input_dict, beam,
+        generation_str = generate_beam(model, tokenizer, input_dict, beam, length_penalty,
                                     temperature, top_k, top_p,
                                     no_repeat_ngram_size, repetition_penalty, random_sample, min_len)
 
