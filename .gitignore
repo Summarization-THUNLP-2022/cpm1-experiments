@@ -1,8 +1,8 @@
 data
 train_data
 reference_data
-experiments/*/results
-experiments/*/*.log
+experiments_old/*/results
+experiments_old/*/*.log
 *__pycache__*
 reference
 pretrain_models
