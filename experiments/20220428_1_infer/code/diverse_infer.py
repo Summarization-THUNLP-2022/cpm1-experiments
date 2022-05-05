@@ -65,22 +65,24 @@ def main():
     batch_num = (step + args.batch_size - 1) // args.batch_size
     batch_dataset = BatchInferDataset(dataset, tokenizer, args.span_length, args.batch_size, batch_num)
     min_len = 2 # 确保生成内容不为空
-    def work(input_dict):
+    def work(global_step, input_dict):
         result = diverse_beam_search_generate(model, tokenizer, input_dict, beam_size=args.beam_size, 
                                               beam_group=args.beam_group, diverse_penalty=args.diverse_penalty, 
                                               no_repeat_ngram_size = args.no_repeat_ngram_size, 
                                               repetition_penalty = args.repetition_penalty, min_len=min_len)
         
         for idx, sent in enumerate(result):
+            if global_step * args.batch_size + idx // args.beam_size >= len(dataset):
+                continue
             fout.write(sent + '\t' + str(input_dict['ids'][idx // args.beam_size]) + '\n')
             fout.flush()
 
     if args.local_rank == 0:
-        for input_dict in tqdm(batch_dataset):
-            work(input_dict)
+        for global_step, input_dict in tqdm(enumerate(batch_dataset)):
+            work(global_step, input_dict)
     else:
-        for input_dict in batch_dataset:
-            work(input_dict)
+        for global_step, input_dict in enumerate(batch_dataset):
+            work(global_step, input_dict)
         
     fout.close()
 
