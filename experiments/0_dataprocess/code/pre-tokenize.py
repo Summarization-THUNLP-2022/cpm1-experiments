@@ -19,7 +19,7 @@ class LCSTSProcess(Process):
 		args = self.args
 		tokenizer = CPM1Tokenizer.from_pretrained_simple(args.model_config, cache_path=args.cache_path)
 		file_path = os.path.join(args.data_dir, args.dataset, args.file_name)
-		output_file_path = os.path.join(args.output_dir, args.dataset, f'{args.file_name}.{self.num}')
+		output_file_path = os.path.join(args.output_dir, args.dataset, f'{args.file_name}.{self.num}.tmp')
 		with open(file_path, encoding='utf8') as fin, open(output_file_path, 'w', encoding='utf8') as fout:
 			def work(i, line):
 				if self.start_pos <= i and i < self.end_pos:
@@ -50,7 +50,7 @@ class CNewSumProcess(Process):
 		args = self.args
 		tokenizer = CPM1Tokenizer.from_pretrained_simple(args.model_config, cache_path=args.cache_path)
 		file_path = os.path.join(args.data_dir, args.dataset, args.file_name)
-		output_file_path = os.path.join(args.output_dir, args.dataset, f'{args.file_name}.{self.num}')
+		output_file_path = os.path.join(args.output_dir, args.dataset, f'{args.file_name}.{self.num}.tmp')
 		with open(file_path, encoding='utf8') as fin, open(output_file_path, 'w', encoding='utf8') as fout:
 			def work(i, line):
 				if self.start_pos <= i and i < self.end_pos:
@@ -122,10 +122,10 @@ def main():
 		p.start()
 		process_list.append(p)
 	print("Merging files...")
-	with open(os.path.join(output_dir, args.file_name), 'w', encoding='utf8') as fout:
+	with open(os.path.join(output_dir, f'{args.file_name}.{args.max_length}'), 'w', encoding='utf8') as fout:
 		for i, p in enumerate(process_list):
 			p.join()
-			process_out_file = os.path.join(output_dir, f'{args.file_name}.{i}')
+			process_out_file = os.path.join(output_dir, f'{args.file_name}.{i}.tmp')
 			with open(process_out_file, 'r', encoding='utf8') as fin:
 				for line in tqdm(fin):
 					fout.write(line)

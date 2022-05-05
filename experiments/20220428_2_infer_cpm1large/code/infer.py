@@ -73,12 +73,10 @@ def main():
 
     if args.local_rank == 0:
         for input_dict in tqdm(batch_dataset):
-            if input_dict['valid']:
-                work(input_dict)
+            work(input_dict)
     else:
         for input_dict in batch_dataset:
-            if input_dict['valid']:
-                work(input_dict)
+            work(input_dict)
         
     fout.close()
 

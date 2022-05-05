@@ -14,11 +14,14 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 BASE_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
 DATASET="CNewSum"
-INPUT_FILE="test.simple.label.jsonl.900"
+INPUT_FILE="dev.simple.label.jsonl.900"
 MODEL_CONFIG_DIR=${CPM_CACHE_PATH}/cpm1-small
 EPOCH=3
 CKPT_STEPS=0
-OUTPUT_FILE=${BASE_PATH}/infer_results/${INPUT_FILE}/${EPOCH}-${CKPT_STEPS}.jsonl
+LENGTH_PENALTY=1.5
+REPETITION_PENALTY=1
+NO_REPEAT_NGRAM_SIZE=0
+OUTPUT_FILE=${BASE_PATH}/infer_results/${INPUT_FILE}/${EPOCH}-${CKPT_STEPS}-LP${LENGTH_PENALTY}-RP${REPETITION_PENALTY}-NP${NO_REPEAT_NGRAM_SIZE}.jsonl
 
 if [ ! -d ${BASE_PATH}/infer_results ]; then
     mkdir ${BASE_PATH}/infer_results
@@ -40,11 +43,11 @@ OPTS+=" --span-length 100"
 OPTS+=" --temperature 1"
 OPTS+=" --top-k 0"
 OPTS+=" --top-p 0"
-OPTS+=" --no-repeat-ngram-size 0"
-OPTS+=" --repetition-penalty 2"
+OPTS+=" --no-repeat-ngram-size ${NO_REPEAT_NGRAM_SIZE}"
+OPTS+=" --repetition-penalty ${REPETITION_PENALTY}"
+OPTS+=" --length-penalty ${LENGTH_PENALTY}"
 OPTS+=" --beam-size 5"
 OPTS+=" --batch-size 16"
-OPTS+=" --length-penalty 1.5"
 # OPTS+=" --random-sample"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${BASE_PATH}/code/infer.py ${OPTS}"

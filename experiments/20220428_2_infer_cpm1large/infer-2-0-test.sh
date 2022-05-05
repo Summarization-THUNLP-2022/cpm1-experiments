@@ -1,10 +1,10 @@
 #! /bin/bash
 
 MASTER_ADDR=localhost
-MASTER_PORT=13585
+MASTER_PORT=13583
 NNODES=1
 NODE_RANK=0
-GPUS_PER_NODE=6
+GPUS_PER_NODE=4
 
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --nnodes $NNODES \
@@ -15,8 +15,8 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 BASE_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
 DATASET="CNewSum"
 INPUT_FILE="test.simple.label.jsonl.900"
-MODEL_CONFIG_DIR=${CPM_CACHE_PATH}/cpm1-small
-EPOCH=3
+MODEL_CONFIG_DIR=${CPM_CACHE_PATH}/cpm1-large
+EPOCH=2
 CKPT_STEPS=0
 OUTPUT_FILE=${BASE_PATH}/infer_results/${INPUT_FILE}/${EPOCH}-${CKPT_STEPS}.jsonl
 
@@ -43,8 +43,7 @@ OPTS+=" --top-p 0"
 OPTS+=" --no-repeat-ngram-size 0"
 OPTS+=" --repetition-penalty 2"
 OPTS+=" --beam-size 5"
-OPTS+=" --batch-size 16"
-OPTS+=" --length-penalty 1.5"
+OPTS+=" --batch-size 4"
 # OPTS+=" --random-sample"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${BASE_PATH}/code/infer.py ${OPTS}"
