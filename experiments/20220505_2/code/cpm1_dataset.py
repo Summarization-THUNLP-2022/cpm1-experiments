@@ -8,7 +8,7 @@ import bmtrain as bmt
 class CNewSum_Dataset(torch.utils.data.Dataset):
 	def __init__(self, path, split, rank, world_size, tokenizer, max_length) -> None:
 		self.data = []
-		path = f"{path}/CNewSum/{split}.jsonl.{max_length}"
+		path = f"{path}/CNewSum/{split}.simple.label.jsonl.900"
 		bmt.print_rank(f"Start loading dataset {path}")
 		if split == 'test':
 			pass

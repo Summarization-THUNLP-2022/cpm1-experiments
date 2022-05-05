@@ -14,9 +14,10 @@
 # limitations under the License.
 import math
 import torch
+import bmtrain as bmt
 import torch.nn.functional as F
 
-class RelativePositionEmbedding(torch.nn.Module):
+class RelativePositionEmbedding(bmt.DistributedModule):
     """`Relative Position Embedding <https://arxiv.org/abs/1803.02155>`_
 
     Args:
@@ -40,8 +41,9 @@ class RelativePositionEmbedding(torch.nn.Module):
 
         super().__init__()
 
-        self.relative_attention_bias = torch.nn.Parameter(
-            torch.empty(num_heads, num_buckets, dtype = dtype)
+        self.relative_attention_bias = bmt.DistributedParameter(
+            torch.empty(num_heads, num_buckets, dtype = dtype), 
+            init_method = bmt.ParameterInitializer(torch.nn.init.normal_, mean = init_mean, std = init_std)
         )
         self.num_heads = num_heads
         self.num_buckets = num_buckets

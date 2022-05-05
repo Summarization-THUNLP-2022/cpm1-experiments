@@ -13,7 +13,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --master_port $MASTER_PORT"
 
 BASE_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") >/dev/null && pwd)
-DATASET="CNewSum"
+DATASET="LCSTS"
 
 OPTS=""
 OPTS+=" --cache-path ${CPM_CACHE_PATH}"
@@ -24,7 +24,7 @@ OPTS+=" --model-config ${CPM_CACHE_PATH}/cpm1-small"
 OPTS+=" --batch-size 64"
 OPTS+=" --train-iters 600000"
 OPTS+=" --save-iters 100000"
-OPTS+=" --max-length 1024"
+OPTS+=" --max-length 256"
 OPTS+=" --save ${BASE_PATH}/results"
 OPTS+=" --save-name finetune-cpm1-ckpt"
 OPTS+=" --lr 1e-2"

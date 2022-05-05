@@ -15,7 +15,7 @@
 import os
 import requests
 import tqdm
-import torch.distributed as dist
+import bmtrain as bmt
 
 file_names = {
     'config': ['config.json'],
@@ -51,9 +51,10 @@ def download(path, url):
 
 def check_web_and_convert_path(path, load_type, cache_path='~/.cache/model-center'): # TODO add hash
     if os.path.isdir(path):
+        bmt.print_rank(f"load from local file: {path}")
         return path
     else:
-        if dist.get_rank() == 0:
+        if bmt.rank() == 0:
             url = f"https://openbmb.oss-cn-hongkong.aliyuncs.com/model_center/{path}"
             try:
                 requests.get(f'{url}/config.json', stream=True).raise_for_status() # use config.json to check if identifier is valid
@@ -63,12 +64,12 @@ def check_web_and_convert_path(path, load_type, cache_path='~/.cache/model-cente
             for name in file_names[load_type]:
                 p = os.path.join(cache_path, name)
                 if os.path.exists(p):
-                    if dist.get_rank() == 0:
-                        print(f"load from cache: {p}")
+                    bmt.print_rank(f"load from cache: {p}")
                 else:
-                    if dist.get_rank() == 0:
+                    if bmt.rank() == 0:
                         download(p, f"{url}/{name}")
         else:
             cache_path = os.path.expanduser(f"{cache_path}/{path}")
+        bmt.synchronize()
         return cache_path
         

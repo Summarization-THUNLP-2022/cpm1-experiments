@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import torch
-
 from ..layer import Encoder, Embedding, Linear, RelativePositionEmbedding
 from .config import CPM1Config
 from .basemodel import BaseModel
@@ -99,8 +98,7 @@ class CPM1(BaseModel):
     def forward(self, input : torch.Tensor, # (batch, seqlen)
                       length : torch.Tensor, # (batch)
                       context : torch.Tensor, # (batch, seqlen)
-                      span : torch.Tensor, # (batch, seqlen)
-                      past_key_values = None):  # num_layers * 2 * (batch, num_heads, seqlen, dim_head)
+                      span : torch.Tensor): # (batch, seqlen)
         """ This model inherits from BaseModel. This model is also a PyTorch torch.nn.Module subclass.
             You can use it as a regular PyTorch Module.
             
@@ -115,17 +113,8 @@ class CPM1(BaseModel):
         """
 
         batch = input.size(0)
-        input_seqlen = input.size(1)
+        seqlen = input.size(1)
 
-        if past_key_values is None:
-            past_length = 0
-            past_key_values = tuple([None] * self.encoder.num_layers)
-        else:
-            past_length = past_key_values[0][0].size(-2)
-        
-        seqlen = input_seqlen + past_length
-
-        # TODO: optimize attention_mask and position_bias when using cache
         with torch.no_grad():
 
             device = input.device
@@ -136,16 +125,12 @@ class CPM1(BaseModel):
             attention_mask = attention_mask & (span[:, None, :] == span[:, :, None])
 
             mask_1d = torch.arange(seqlen, device=device)[None, :].repeat(batch, 1) < length[:, None]
-            attention_mask = mask_1d.view(batch, seqlen, 1) & mask_1d.view(batch, 1, seqlen) & attention_mask # (batch, seqlen, seqlen)
+            attention_mask = mask_1d.view(batch, seqlen, 1) & mask_1d.view(batch, 1, seqlen) & attention_mask
 
         position_bias = self.position_bias(seqlen, seqlen)
 
-        attention_mask = attention_mask[:, -input_seqlen:, :]
-        position_bias = position_bias[:, -input_seqlen:, :]
-
         hidden_states = self.input_embedding(input)
-        hidden_states, present_key_values = self.encoder(hidden_states, attention_mask, position_bias, past_key_values)
-
+        hidden_states = self.encoder(hidden_states, attention_mask, position_bias)
 
         if self.cls_head:
             logits = self.output_projection(hidden_states)
@@ -155,4 +140,4 @@ class CPM1(BaseModel):
             logits = self.input_embedding.projection(hidden_states)
 
 
-        return logits, present_key_values
+        return logits

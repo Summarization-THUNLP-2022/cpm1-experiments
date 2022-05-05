@@ -1,1 +1,3 @@
-推理代码
+模型训练
+- Dataset: LCSTS
+- Model: cpm1-small

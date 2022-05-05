@@ -13,5 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Model Config
+from .config import *
+
 # Model Architecture
-from .cpm1 import CPM1, CPM1Config
+from .cpm1 import CPM1
+from .cpm2 import CPM2
+from .t5 import T5
+from .gpt2 import GPT2
+from .gptj import GPTj
+from .bert import Bert
