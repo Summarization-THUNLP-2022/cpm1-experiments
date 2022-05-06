@@ -244,7 +244,6 @@ def postprocess_next_token_scores(tokenizer,
         for i, banned_tokens in enumerate(banned_tokens):
             scores[i, banned_tokens] = -float("inf")
 
-    # 允许生成eos和bos，以及换行
     scores[:, [0, 1, 2, 3] + [x for x in range(5, 8)]] = -float("inf")
 
     if start_idx is not None and end_idx is not None and end_idx >= start_idx and min_len is not None:

@@ -202,13 +202,13 @@ class Attention(torch.nn.Module):
         score = self.softmax(score)
 
         # avoid nan in softmax
-        # score = torch.masked_fill(
-        #     score,
-        #     mask.view(batch_size, 1, len_q, len_k)==False,
-        #     torch.scalar_tensor(0, device=score.device, dtype=score.dtype)
-        # ).view(batch_size * self.num_heads, len_q, len_k) # (batch * num_heads, len_q, len_k)
+        score = torch.masked_fill(
+            score,
+            mask.view(batch_size, 1, len_q, len_k)==False,
+            torch.scalar_tensor(0, device=score.device, dtype=score.dtype)
+        ).view(batch_size * self.num_heads, len_q, len_k) # (batch * num_heads, len_q, len_k)
         
-        score = (score * (mask.view(batch_size, 1, len_q, len_k) == True)).view(batch_size * self.num_heads, len_q, len_k)
+        # score = (score * (mask.view(batch_size, 1, len_q, len_k) == True)).view(batch_size * self.num_heads, len_q, len_k)
 
 
         if self.attention_dropout is not None:
