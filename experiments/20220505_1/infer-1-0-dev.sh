@@ -48,7 +48,6 @@ OPTS+=" --repetition-penalty ${REPETITION_PENALTY}"
 OPTS+=" --length-penalty ${LENGTH_PENALTY}"
 OPTS+=" --beam-size 5"
 OPTS+=" --batch-size 16"
-# OPTS+=" --random-sample"
 
 CMD="python3 -m torch.distributed.launch ${DISTRIBUTED_ARGS} ${BASE_PATH}/code_infer/infer.py ${OPTS}"
 echo ${CMD}

@@ -245,7 +245,7 @@ def postprocess_next_token_scores(tokenizer,
             scores[i, banned_tokens] = -float("inf")
 
     # 允许生成eos和bos，以及换行
-    scores[:, [0, 1, 2, 3] + [5] + [x for x in range(8, 20)]] = -float("inf")
+    scores[:, [0, 1, 2, 3] + [x for x in range(5, 8)]] = -float("inf")
 
     if start_idx is not None and end_idx is not None and end_idx >= start_idx and min_len is not None:
         min_length_constraint(scores, end_idx - start_idx + 1, min_len, tokenizer)
