@@ -1,5 +1,7 @@
 import argparse
 
+from tqdm import tqdm
+
 
 def get_args():
 	parser = argparse.ArgumentParser()
@@ -14,7 +16,7 @@ if __name__ == '__main__':
 	args = get_args()
 	predictions = []
 	with open(args.file_path, 'r') as f, open(args.output_file_path, 'w') as wf:
-		for line in f:
+		for line in tqdm(f):
 			line = line.split('\t')
 			predictions.append((line[0], int(line[1])))
 		predictions = sorted(predictions, key=lambda x: x[1])
