@@ -5,7 +5,6 @@ import os
 from model_center import get_args
 from model_center.model import CPM1
 from model_center.tokenizer import CPM1Tokenizer
-# from model_center.dataset.cpm1dataset import DATASET
 from cpm1_dataset import DATASET
 from model_center.utils import print_inspect
 from model_center.dataset import DistributedDataLoader
