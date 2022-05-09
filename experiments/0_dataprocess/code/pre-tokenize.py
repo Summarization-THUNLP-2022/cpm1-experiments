@@ -26,7 +26,7 @@ class LCSTSProcess(Process):
 					line_json = json.loads(line) 
 					summary = line_json['summary']
 					text = line_json['text']
-					lef_tokens, rig_tokens = tokenize(summary, text, tokenizer)
+					lef_tokens, rig_tokens = tokenize(summary, text, tokenizer, args.max_length)
 					result = {'lef_tokens': lef_tokens, 'rig_tokens': rig_tokens}
 					fout.write(json.dumps(result, ensure_ascii=False) + '\n')
 

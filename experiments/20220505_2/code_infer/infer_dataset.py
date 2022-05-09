@@ -33,11 +33,11 @@ class InferDataset:
 
 
 class LCSTSInferDataset(InferDataset):
-	def __init__(self, file_path):
+	def __init__(self, file_path, max_length=1024):
 		super().__init__()
 		self.__file_path = file_path
 		self.total_length = 0
-		with open(self.file_path, 'r') as f:
+		with open(self.__file_path, 'r') as f:
 			for line in f:
 				self.total_length += 1
 
