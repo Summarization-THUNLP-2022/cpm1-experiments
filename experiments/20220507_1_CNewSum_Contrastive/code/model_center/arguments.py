@@ -90,6 +90,8 @@ def add_training_args(parser: argparse.ArgumentParser):
                        help='max length of decoder input')
     group.add_argument('--start-step', type=int, default=0,
                        help='step to start or continue training')
+    group.add_argument('--start-epoch', type=int, default=0,
+                       help='epoch to start or continue training')
     group.add_argument('--seed', type=int, default=1234,
                        help='random seed for reproducibility')
     group.add_argument('--grad-accumulation-steps', type=int, default=1)

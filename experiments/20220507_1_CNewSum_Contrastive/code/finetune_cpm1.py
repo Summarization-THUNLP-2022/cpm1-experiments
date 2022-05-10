@@ -69,6 +69,8 @@ def setup_model_and_optimizer(args):
     tokenizer = get_tokenizer(args)
     # get the model
     model = get_model(args)
+    if args.load:
+        bmt.load(model, args.load, strict=True)
     bmt.synchronize()
     # get the optimizer and lr_scheduler
     optimizer = get_optimizer(args, model)
@@ -135,7 +137,7 @@ def finetune(args, tokenizer, model, optimizer, lr_scheduler, dataset):
     }
 
     grad_norm = torch.nan
-    for epoch in range(100):
+    for epoch in range(args.start_epoch, 100):
         model.train()
         for it, data in enumerate(dataloader['train']):
             input_tokens = data["input_tokens"].cuda()
@@ -198,9 +200,8 @@ def finetune(args, tokenizer, model, optimizer, lr_scheduler, dataset):
                     grad_norm
                 )
             )
-            # if it % args.inspect_iters == 0: print_inspect(model, "*")
-            if args.save != None and it % args.save_iters == 0:
-                bmt.save(model, os.path.join(args.save, args.save_name + f"-{epoch}-{it}.pt"))
+
+        bmt.save(model, os.path.join(args.save, args.save_name + f"-{epoch+1}-0.pt"))
 
         model.eval()
         with torch.no_grad():
