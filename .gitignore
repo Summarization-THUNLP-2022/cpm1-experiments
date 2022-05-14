@@ -9,4 +9,5 @@ experiments_old/*/*.log
 reference
 pretrain_models
 *infer_results*
+experiments/*result*
 experiments/20220505_1_CNewSum/result_for_brio
