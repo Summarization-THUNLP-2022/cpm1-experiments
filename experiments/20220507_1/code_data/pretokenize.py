@@ -8,7 +8,7 @@ from model_center.tokenizer import CPM1Tokenizer
 
 
 def tokenize_list(pid, candidates):
-	tokenizer = CPM1Tokenizer.from_pretrained_simple('cpm1-small', '/data2/private/zhaoxinhao/ModelCenter')
+	tokenizer = CPM1Tokenizer.from_pretrained_simple('cpm1-small', os.environ['CPM_CACHE_PATH'])
 
 	def work(candidate):
 		return tokenizer.encode(candidate) + [tokenizer.eod_id]
@@ -40,7 +40,7 @@ def main():
 			candidates.append(line.strip())
 	assert len(candidates) == len(all_data) * repeat_times
 
-	process_num = 32
+	process_num = 16
 	pool = mp.Pool(processes=process_num)
 
 	print("tokenize")
