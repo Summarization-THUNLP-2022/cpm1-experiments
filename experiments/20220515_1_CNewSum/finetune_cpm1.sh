@@ -35,7 +35,7 @@ OPTS+=" --warmup-iters 100"
 OPTS+=" --lr-decay-style noam"
 OPTS+=" --weight-decay 1e-3"
 OPTS+=" --clip-grad 1.0"
-OPTS+=" --loss-scale 262144"
+OPTS+=" --loss-scale 1048576"
 OPTS+=" --grad-accumulation-steps 4"
 
 OPTS+=" --brio-length-penalty 2.0"

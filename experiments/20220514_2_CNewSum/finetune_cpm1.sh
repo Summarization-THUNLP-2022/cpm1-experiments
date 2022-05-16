@@ -1,12 +1,12 @@
 #! /bin/bash
 
 MASTER_ADDR=localhost
-MASTER_PORT=13580
+MASTER_PORT=13576
 NNODES=1
 NODE_RANK=0
 GPUS_PER_NODE=4
 
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CUDA_VISIBLE_DEVICES=4,5,6,7
 
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --nnodes $NNODES \
@@ -35,14 +35,14 @@ OPTS+=" --warmup-iters 100"
 OPTS+=" --lr-decay-style noam"
 OPTS+=" --weight-decay 1e-3"
 OPTS+=" --clip-grad 1.0"
-OPTS+=" --loss-scale 262144"
+OPTS+=" --loss-scale 1048576"
 OPTS+=" --grad-accumulation-steps 4"
 
 OPTS+=" --brio-length-penalty 2.0"
 OPTS+=" --margin 0.001"
 OPTS+=" --gold-margin 0"
 OPTS+=" --gold-weight 0"
-OPTS+=" --mle-weight 0.1"
+OPTS+=" --mle-weight 1"
 OPTS+=" --rank-weight 10"
 # OPTS+=" --load ${BASE_PATH}/results/cpm1-new.pt"
 
