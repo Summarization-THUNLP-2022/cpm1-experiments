@@ -1,13 +1,13 @@
 data
 train_data
 reference_data
+reference
 experiments/*/results
+experiments/*/infer_results
+experiments/*/eval_results
 experiments/*/*.log
 experiments_old/*/results
 experiments_old/*/*.log
+experiments_old/*/infer_results
 *__pycache__*
-reference
-pretrain_models
-*infer_results*
-experiments/*result*
 experiments/20220505_1_CNewSum/result_for_brio
